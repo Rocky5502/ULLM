@@ -1,0 +1,13 @@
+# Model IDs verified against Zhizengzeng's public model catalogue on 2026-09-02/03.
+# Always run scripts/check_models.py immediately before the frozen experiment.
+models:
+  - id: gpt-5.4
+    family: OpenAI
+  - id: claude-sonnet-5
+    family: Anthropic
+  - id: deepseek-v4-pro
+    family: DeepSeek
+  - id: qwen3.8-max
+    family: Alibaba-Qwen
+  - id: llama-4-maverick
+    family: Meta
