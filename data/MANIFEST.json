@@ -1,0 +1,12 @@
+{
+  "name": "ImperfectiveNLI",
+  "source_repository": "https://github.com/boleima/ImperfectiveParadox",
+  "source_path": "data/imperfectiveNLI.json",
+  "source_raw_url": "https://raw.githubusercontent.com/boleima/ImperfectiveParadox/main/data/imperfectiveNLI.json",
+  "upstream_git_blob_sha1": "e20112c9de1f8c8ab27a8e2b969699b23dcdb186",
+  "expected_bytes": 100970,
+  "expected_examples": 400,
+  "expected_group_counts": {"A": 100, "B": 100, "C": 100, "D": 100},
+  "license_as_reported_by_source_paper": "CC BY-NC 4.0",
+  "note": "Run scripts/fetch_imperfective_nli.py. The downloader verifies the exact upstream Git blob SHA-1 and writes a local SHA-256 manifest."
+}
