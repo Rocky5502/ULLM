@@ -18,11 +18,7 @@ def accuracy(gold: Iterable[str], pred: Iterable[str]) -> float:
 def multiclass_brier(gold: list[str], probs: list[dict[str, float]]) -> float:
     if not gold:
         return float("nan")
-    return float(
-        np.mean(
-            [sum((pr[k] - float(k == y)) ** 2 for k in LABELS) for y, pr in zip(gold, probs)]
-        )
-    )
+    return float(np.mean([sum((pr[k] - float(k == y)) ** 2 for k in LABELS) for y, pr in zip(gold, probs)]))
 
 
 def nll(gold: list[str], probs: list[dict[str, float]], eps: float = 1e-12) -> float:
@@ -44,12 +40,12 @@ def verbal_uncertainty(prob: dict[str, float]) -> float:
     return 1.0 - prediction_confidence(prob)
 
 
-def ece(
-    gold: list[str],
-    pred: list[str],
-    probs: list[dict[str, float]],
-    n_bins: int = 15,
-) -> float:
+# Backward-compatible name used by early analysis scripts.
+def confidence_uncertainty(prob: dict[str, float]) -> float:
+    return verbal_uncertainty(prob)
+
+
+def ece(gold: list[str], pred: list[str], probs: list[dict[str, float]], n_bins: int = 15) -> float:
     """Top-label expected calibration error with equal-width bins."""
     if not gold:
         return float("nan")
@@ -65,12 +61,12 @@ def ece(
     return score
 
 
-def classwise_ece(gold: list[str], probs: list[dict[str, float]], n_bins: int = 15) -> float:
-    """Average one-vs-rest ECE over True/False/Unknown."""
+def classwise_ece(gold: list[str], probs: list[dict[str, float]], n_bins: int = 15) -> dict[str, float]:
+    """One-vs-rest ECE for each label; useful because Unknown is scientifically central."""
     if not gold:
-        return float("nan")
+        return {k: float("nan") for k in LABELS}
     edges = np.linspace(0.0, 1.0, n_bins + 1)
-    values: list[float] = []
+    values: dict[str, float] = {}
     for label in LABELS:
         conf = np.asarray([pr[label] for pr in probs], dtype=float)
         target = np.asarray([g == label for g in gold], dtype=float)
@@ -80,13 +76,16 @@ def classwise_ece(gold: list[str], probs: list[dict[str, float]], n_bins: int = 
             mask = (conf > left) & (conf <= right) if i else (conf >= left) & (conf <= right)
             if np.any(mask):
                 score += float(mask.mean()) * abs(float(target[mask].mean()) - float(conf[mask].mean()))
-        values.append(score)
-    return float(np.mean(values))
+        values[label] = score
+    return values
 
 
-def reliability_bins(
-    gold: list[str], pred: list[str], probs: list[dict[str, float]], n_bins: int = 15
-) -> list[dict[str, float]]:
+def mean_classwise_ece(gold: list[str], probs: list[dict[str, float]], n_bins: int = 15) -> float:
+    vals = classwise_ece(gold, probs, n_bins=n_bins)
+    return float(np.mean(list(vals.values())))
+
+
+def reliability_bins(gold: list[str], pred: list[str], probs: list[dict[str, float]], n_bins: int = 15) -> list[dict[str, float]]:
     """Data for reliability diagrams; empty bins are omitted."""
     conf = np.asarray([max(pr.values()) for pr in probs], dtype=float)
     corr = np.asarray([a == b for a, b in zip(gold, pred)], dtype=float)
@@ -96,15 +95,13 @@ def reliability_bins(
         left, right = edges[i], edges[i + 1]
         mask = (conf > left) & (conf <= right) if i else (conf >= left) & (conf <= right)
         if np.any(mask):
-            rows.append(
-                {
-                    "left": float(left),
-                    "right": float(right),
-                    "n": int(mask.sum()),
-                    "confidence": float(conf[mask].mean()),
-                    "accuracy": float(corr[mask].mean()),
-                }
-            )
+            rows.append({
+                "left": float(left),
+                "right": float(right),
+                "n": int(mask.sum()),
+                "confidence": float(conf[mask].mean()),
+                "accuracy": float(corr[mask].mean()),
+            })
     return rows
 
 
@@ -131,9 +128,7 @@ def semantic_uncertainty_recognition(groups: list[str], probs: list[dict[str, fl
     return float(np.mean(vals)) if vals else float("nan")
 
 
-def teleological_overconfidence_rate(
-    groups: list[str], probs: list[dict[str, float]], threshold: float = 0.80
-) -> float:
+def teleological_overconfidence_rate(groups: list[str], probs: list[dict[str, float]], threshold: float = 0.80) -> float:
     vals = [pr["True"] >= threshold for g, pr in zip(groups, probs) if g.startswith("C_")]
     return float(np.mean(vals)) if vals else float("nan")
 
@@ -152,6 +147,29 @@ def sampling_uncertainty(labels: list[str]) -> dict[str, float]:
     ps = [counts[k] / n for k in LABELS if counts[k]]
     entropy = -sum(p * math.log(p) for p in ps) / math.log(len(LABELS))
     return {"variation_ratio": 1.0 - max(counts.values()) / n, "label_entropy": entropy}
+
+
+def paired_condition_consistency(records: list[dict]) -> dict[str, float]:
+    """Exact paired correctness across A/C and B/D for matching numeric IDs.
+
+    This is intentionally strict: a pair counts only when BOTH member predictions are
+    correct. More granular probability-shift analysis lives in analyze_pairwise.py.
+    """
+    by_id = {r["example"]["id"]: r for r in records if r.get("prediction")}
+    out: dict[str, float] = {}
+    for name, left, right in (("AC", "A", "C"), ("BD", "B", "D")):
+        ok: list[bool] = []
+        for i in range(1, 101):
+            a = by_id.get(f"{left}_{i:03d}")
+            b = by_id.get(f"{right}_{i:03d}")
+            if not a or not b:
+                continue
+            ok.append(
+                a["prediction"]["label"] == a["example"]["label"]
+                and b["prediction"]["label"] == b["example"]["label"]
+            )
+        out[name] = float(np.mean(ok)) if ok else float("nan")
+    return out
 
 
 def binary_auroc(target: list[bool], score: list[float]) -> float:
@@ -184,9 +202,7 @@ def average_precision(target: list[bool], score: list[float]) -> float:
     return float((precision * y).sum() / y.sum())
 
 
-def risk_coverage(
-    correct: list[bool], uncertainty: list[float]
-) -> tuple[np.ndarray, np.ndarray, float]:
+def risk_coverage(correct: list[bool], uncertainty: list[float]) -> tuple[np.ndarray, np.ndarray, float]:
     """Selective risk curve, answering least-uncertain examples first."""
     if not correct:
         return np.array([]), np.array([]), float("nan")
