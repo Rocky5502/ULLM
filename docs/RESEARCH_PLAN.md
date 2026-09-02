@@ -36,7 +36,7 @@ The paper is not a model-refresh replication. The reference study established te
 
 ## Experimental panel
 
-Five cross-family API models through one OpenAI-compatible gateway: GPT-5.4, Claude Sonnet 5, DeepSeek V4 Pro, Qwen 3.8 Max, and Llama 4 Maverick. Exact gateway availability is checked immediately before execution. Requested and returned model identifiers are recorded per call.
+Five cross-family gateway-routed API identifiers are frozen in `configs/models.yaml`: `gpt-5.6-sol`, `claude-sonnet-5`, `deepseek-v4-pro`, `qwen3.8-max`, and `gemini-3.7-flash`. The gateway catalog is checked immediately before execution, and requested/returned identifiers are recorded per call. These aliases are external routing dependencies, not claims of immutable vendor-direct checkpoint identity; paper claims attach to the endpoints actually observed on the recorded run date.
 
 No large local LLM is required; provider-specific logits are not part of the primary analysis. This keeps the main methodology comparable across black-box APIs.
 
@@ -60,7 +60,7 @@ SUR/TOR/ADG are explicitly proposed descriptive measures for this paper, not est
 
 ## Statistical protocol
 
-Use paired/clustered resampling by lexical verb rather than treating every generated row as independent. Report 95% bootstrap CIs from 10,000 verb-cluster resamples for primary contrasts. Use Holm correction for families of multi-model hypothesis tests. Do not choose thresholds on final test examples; predeclared sweeps are primary, and any optimized threshold must be selected on a 25% verb-disjoint calibration split and evaluated on held-out verbs.
+Use paired/clustered resampling by lexical verb rather than treating every generated row as independent. Report 95% bootstrap CIs from 10,000 verb-cluster resamples for primary contrasts. Use Holm correction for families of multi-model hypothesis tests. Do not choose thresholds on final test examples; predeclared sweeps are primary. The compact RQ3 manuscript operating point is frozen before results as `1-maxprob >= 0.20`; any separately optimized threshold must be selected on a verb-disjoint calibration split and evaluated on held-out verbs. Discrete uncertainty ties are handled without arbitrary row-order selection.
 
 ## IASEAI safety framing
 
