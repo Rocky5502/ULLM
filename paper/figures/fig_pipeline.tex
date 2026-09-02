@@ -1,10 +1,57 @@
-\begin{tikzpicture}[font=\scriptsize, >=latex, node distance=4mm]
-\tikzset{box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum height=10mm},arrow/.style={->, thick}}
-\node[box, fill=gray!8, text width=24mm] (data) {\textbf{ImperfectiveNLI}\\400 minimal pairs\\Groups A--D};
-\node[box, fill=blue!8, text width=29mm, right=5mm of data] (apis) {\textbf{5 API LLMs}\\GPT / Claude /\\DeepSeek / Qwen / Llama};
-\node[box, fill=orange!9, text width=31mm, right=5mm of apis] (signals) {\textbf{Uncertainty signals}\\verbal $P(T,F,U)$\\$K$ sampled labels};
-\node[box, fill=green!8, text width=31mm, below=6mm of signals] (metrics) {\textbf{Risk quantification}\\ACC, TBR, $\Delta_{AA}$\\ECE, Brier, SUR, TOR\\disagreement / AURC};
-\node[box, fill=purple!7, text width=30mm, left=5mm of metrics] (control) {\textbf{Selective control}\\answer / defer / recheck\\threshold sweep};
-\node[box, fill=yellow!10, text width=28mm, left=5mm of control] (analysis) {\textbf{Analysis}\\verb-cluster bootstrap\\semantic subclasses\\cost / coverage};
-\draw[arrow] (data) -- (apis); \draw[arrow] (apis) -- (signals); \draw[arrow] (signals) -- (metrics); \draw[arrow] (metrics) -- (control); \draw[arrow] (control) -- (analysis); \draw[arrow, dashed] (analysis) |- (data.south);
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\tikzset{
+  box/.style={draw=black!45,rounded corners=2pt,very thick,align=center,inner sep=4pt},
+  arr/.style={-{Latex[length=2mm]},thick,draw=black!60},
+  tag/.style={draw=black!25,rounded corners=5pt,inner xsep=4pt,inner ysep=1.5pt,font=\scriptsize\bfseries}
+}
+
+\node[box,fill=gray!7,text width=22mm,minimum height=15mm] (data) at (0,0) {
+  \textbf{ImperfectiveNLI}\\400 examples\\A/B/C/D pairs
+};
+\node[box,fill=blue!7,text width=23mm,minimum height=15mm] (models) at (29mm,0) {
+  \textbf{5 API families}\\same gateway\\IDs frozen live
+};
+\node[box,fill=orange!8,text width=25mm,minimum height=15mm] (primary) at (60mm,0) {
+  \textbf{Neutral primary}\\$P(T,F,U)$, $T=0$\\raw + manifest
+};
+\draw[arr] (data) -- (models);
+\draw[arr] (models) -- (primary);
+
+\node[tag,fill=purple!6] at (1mm,-20mm) {RQ1 Recognition};
+\node[box,fill=purple!5,text width=23mm] (rq1) at (22mm,-31mm) {
+  ACC/TBR/$\Delta_{AA}$\\SUR/TOR/ADG\\Brier/NLL/ECE
+};
+\draw[arr] (primary.south) |- (rq1.east);
+
+\node[tag,fill=yellow!9] at (35mm,-20mm) {RQ2 Faithfulness};
+\node[box,fill=yellow!8,text width=28mm] (sample) at (52mm,-31mm) {
+  \textbf{$K=5$ sampling}\\variation ratio / entropy\\error AUROC/AUPRC
+};
+\draw[arr] (primary.south) -- (sample.north);
+
+\node[tag,fill=green!8] at (72mm,-20mm) {RQ3 Control};
+\node[box,fill=green!7,text width=25mm] (control) at (82mm,-31mm) {
+  risk--coverage\\defer / cached verifier\\TBR + D retention + cost
+};
+\draw[arr] (primary.south) |- (control.west);
+
+\node[box,fill=red!5,text width=29mm] (robust) at (16mm,-55mm) {
+  \textbf{Fixed robustness}\\strict / definition-aware\\reversed label order
+};
+\node[box,fill=cyan!6,text width=29mm] (paired) at (52mm,-55mm) {
+  \textbf{Paired semantics}\\A$\rightarrow$C: $\Delta P(U),\Delta P(T)$\\B$\rightarrow$D invariance
+};
+\node[box,fill=gray!8,text width=26mm] (audit) at (86mm,-55mm) {
+  \textbf{Audit gate}\\hashes / errors / K\\model-ID drift
+};
+\draw[arr] (rq1.south) -- (robust.north);
+\draw[arr] (sample.south) -- (paired.north);
+\draw[arr] (control.south) -- (audit.north);
+
+\node[box,fill=blue!4,text width=73mm,minimum height=9mm] (outputs) at (52mm,-76mm) {
+  \textbf{Verb-cluster 95\% CIs + processed CSVs $\rightarrow$ vector PDF/SVG figures $\rightarrow$ manuscript TBD replacement}
+};
+\draw[arr] (robust.south) -- (outputs.north west);
+\draw[arr] (paired.south) -- (outputs.north);
+\draw[arr] (audit.south) -- (outputs.north east);
 \end{tikzpicture}
