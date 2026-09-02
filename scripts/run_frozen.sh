@@ -29,19 +29,24 @@ audit_run() {
 echo "[1/12] Validate project, preregistration, environment, and dataset"
 python scripts/preflight.py
 
-echo "[2/12] Snapshot live gateway model catalogue"
+echo "[2/12] Snapshot live gateway model catalogue (no completion calls yet)"
 python scripts/check_models.py
+
+echo "No paid chat-completion calls have been made by this script yet."
+printf 'Type SMOKE exactly to authorize the 100-call paid smoke test: '
+read -r smoke_answer
+[[ "$smoke_answer" == "SMOKE" ]] || { echo "Stopped before any paid completion call."; exit 1; }
 
 echo "[3/12] Balanced smoke test: 20 examples x all five models"
 run_or_resume smoke-neutral-v1 --mode deterministic --prompt neutral --limit 20
 
-echo "[4/12] Hard-audit smoke before authorizing the paid study"
+echo "[4/12] Hard-audit smoke before authorizing the full paid study"
 audit_run smoke-neutral-v1 '*__deterministic__neutral.jsonl' 1 results/processed/audit_smoke.json
 smoke=(results/raw/smoke-neutral-v1/*__deterministic__neutral.jsonl)
 python scripts/summarize_results.py "${smoke[@]}" --bins 15 --out results/processed/summary_smoke.csv
-printf 'Smoke gate PASSED. Type RUN exactly to launch paid frozen calls: '
+printf 'Smoke gate PASSED. Type RUN exactly to authorize the remaining 15,800 main-study calls before retries: '
 read -r answer
-[[ "$answer" == "RUN" ]] || { echo "Stopped before paid full run."; exit 1; }
+[[ "$answer" == "RUN" ]] || { echo "Stopped after smoke and before the full paid run."; exit 1; }
 
 echo "[5/12] Full neutral deterministic run"
 run_or_resume frozen-det-neutral-v1 --mode deterministic --prompt neutral
