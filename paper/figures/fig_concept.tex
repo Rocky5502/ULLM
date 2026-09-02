@@ -4,19 +4,15 @@
   pill/.style={draw=black!30,rounded corners=5pt,inner xsep=4pt,inner ysep=2pt,font=\scriptsize\bfseries},
   arr/.style={-{Latex[length=2mm]},thick,draw=black!60}
 }
-
-% Input example
 \node[card,fill=gray!6,text width=73mm] (input) at (0,0) {
   \textbf{Imperfective telic evidence}\\[-1pt]
   \emph{Premise:} ``The carpenter was building a gazebo.''\\
   \emph{Hypothesis:} ``The carpenter built a gazebo.''
 };
-
-% Two different meanings of uncertainty
 \node[card,fill=blue!7,text width=33mm] (semantic) at (-20mm,-18mm) {
   \textbf{Event-level semantic uncertainty}\\
   Did the real-world endpoint occur?\\[1pt]
-  \nodepart{}\textbf{Under-specified}
+  \textbf{Under-specified}
 };
 \node[card,fill=orange!8,text width=33mm] (predictive) at (20mm,-18mm) {
   \textbf{Model-level predictive uncertainty}\\
@@ -24,8 +20,6 @@
 };
 \draw[arr] (input.south west) ++(12mm,0) -- (semantic.north);
 \draw[arr] (input.south east) ++(-12mm,0) -- (predictive.north);
-
-% Three possible model states
 \node[card,fill=green!8,text width=22mm,minimum height=22mm] (ideal) at (-28mm,-47mm) {
   \textbf{Desired}\\
   $P(U)\!\gg\!P(T),P(F)$\\
@@ -44,8 +38,6 @@
 \draw[arr] (semantic.south) -- (ideal.north);
 \draw[arr] (predictive.south) -- (teleo.north);
 \draw[arr] (predictive.south) -- (confused.north);
-
-% Scientific takeaway
 \node[pill,fill=purple!7,text width=70mm,align=center] (takeaway) at (0,-67mm) {
   Group C has an uncertain \emph{world state} but a determinate NLI target: \textsc{Unknown}.\\
   Therefore high entropy is \emph{not} the objective; high calibrated $P(\textsc{Unknown})$ is.
