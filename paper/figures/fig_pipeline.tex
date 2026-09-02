@@ -1,0 +1,10 @@
+\begin{tikzpicture}[font=\scriptsize, >=latex, node distance=4mm]
+\tikzset{box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum height=10mm},arrow/.style={->, thick}}
+\node[box, fill=gray!8, text width=24mm] (data) {\textbf{ImperfectiveNLI}\\400 minimal pairs\\Groups A--D};
+\node[box, fill=blue!8, text width=29mm, right=5mm of data] (apis) {\textbf{5 API LLMs}\\GPT / Claude /\\DeepSeek / Qwen / Llama};
+\node[box, fill=orange!9, text width=31mm, right=5mm of apis] (signals) {\textbf{Uncertainty signals}\\verbal $P(T,F,U)$\\$K$ sampled labels};
+\node[box, fill=green!8, text width=31mm, below=6mm of signals] (metrics) {\textbf{Risk quantification}\\ACC, TBR, $\Delta_{AA}$\\ECE, Brier, SUR, TOR\\disagreement / AURC};
+\node[box, fill=purple!7, text width=30mm, left=5mm of metrics] (control) {\textbf{Selective control}\\answer / defer / recheck\\threshold sweep};
+\node[box, fill=yellow!10, text width=28mm, left=5mm of control] (analysis) {\textbf{Analysis}\\verb-cluster bootstrap\\semantic subclasses\\cost / coverage};
+\draw[arrow] (data) -- (apis); \draw[arrow] (apis) -- (signals); \draw[arrow] (signals) -- (metrics); \draw[arrow] (metrics) -- (control); \draw[arrow] (control) -- (analysis); \draw[arrow, dashed] (analysis) |- (data.south);
+\end{tikzpicture}
