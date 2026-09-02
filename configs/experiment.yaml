@@ -49,6 +49,10 @@ selective:
   target_coverages: [1.00, 0.90, 0.80, 0.70, 0.50]
   target_risks: [0.10, 0.05]
   recheck_uncertainty_thresholds: [0.10, 0.20, 0.30, 0.40]
+  # One compact manuscript operating point is frozen before results. The full sweep
+  # remains primary evidence and is always reported in CSV/figures.
+  primary_recheck_signal: 1-maxprob
+  primary_recheck_threshold: 0.20
 
 statistics:
   cluster_key: verb
