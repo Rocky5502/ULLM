@@ -1,0 +1,12 @@
+\begin{tikzpicture}[font=\scriptsize, >=latex, node distance=2mm]
+\tikzset{box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum height=8mm},arrow/.style={->, thick},small/.style={draw, rounded corners=1.5pt, align=center, inner sep=3pt, minimum width=25mm}}
+\node[box, fill=gray!8, text width=72mm] (premise) {\textbf{Ambiguous telic premise:} ``The carpenter was building a gazebo.''\\\textbf{Hypothesis:} ``The carpenter built a gazebo.''};
+\node[box, fill=blue!8, text width=34mm, below left=6mm and -2mm of premise] (world) {\textbf{Semantic uncertainty}\\Was the endpoint reached?\\\emph{Under-specified}};
+\node[box, fill=orange!10, text width=34mm, below right=6mm and -2mm of premise] (model) {\textbf{Predictive uncertainty}\\How uncertain is the model\\about the NLI label?};
+\draw[arrow] (premise) -- (world); \draw[arrow] (premise) -- (model);
+\node[small, fill=green!8, below=6mm of world] (ideal) {\textbf{Ideal}\\$P(\mathrm{Unknown})\!\rightarrow\!1$\\low predictive entropy};
+\node[small, fill=red!8, below=6mm of model, xshift=-13mm] (teleo) {\textbf{Teleological overconfidence}\\$P(\mathrm{True})\!\rightarrow\!1$};
+\node[small, fill=yellow!12, right=3mm of teleo] (confused) {\textbf{Model confusion}\\diffuse $P(T,F,U)$\\high predictive entropy};
+\draw[arrow] (world) -- (ideal); \draw[arrow] (model) -- (teleo); \draw[arrow] (model) -- (confused);
+\node[align=center, below=5mm of ideal, xshift=35mm, text width=75mm] {\textbf{Key distinction:} the event can be semantically uncertain while the logically correct NLI decision is confidently \emph{Unknown}.};
+\end{tikzpicture}
