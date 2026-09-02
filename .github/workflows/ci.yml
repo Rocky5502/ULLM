@@ -7,16 +7,32 @@ on:
 jobs:
   python-tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       - name: Install
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Test
+          python -m pip check
+      - name: Compile all Python sources
+        run: python -m compileall -q src scripts tests
+      - name: Validate frozen project consistency
+        env:
+          PYTHONPATH: src
+        run: python scripts/validate_project.py
+      - name: Unit tests
         env:
           PYTHONPATH: src
         run: pytest -q
+      - name: Zero-API end-to-end analysis smoke
+        if: matrix.python-version == '3.11'
+        env:
+          PYTHONPATH: src
+        run: python scripts/synthetic_pipeline_smoke.py
