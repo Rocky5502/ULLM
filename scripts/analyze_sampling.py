@@ -10,15 +10,19 @@ import pandas as pd
 
 from ullm.metrics import average_precision, binary_auroc, sampling_uncertainty
 
+LABEL_ORDER = ("True", "False", "Unknown")
+
 
 def mode_stable(labels: list[str]) -> str:
-    counts = {k: labels.count(k) for k in ("True", "False", "Unknown")}
-    return max(("True", "False", "Unknown"), key=lambda k: counts[k])
+    counts = {k: labels.count(k) for k in LABEL_ORDER}
+    # deterministic tie break is only for bookkeeping; ties are flagged separately.
+    return max(LABEL_ORDER, key=lambda k: counts[k])
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("paths", nargs="+", type=Path)
+    p.add_argument("--expected-k", type=int, default=5)
     p.add_argument("--out", type=Path, default=Path("results/processed/sampling.csv"))
     p.add_argument("--ranking-out", type=Path, default=Path("results/processed/sampling_ranking.csv"))
     args = p.parse_args()
@@ -39,10 +43,13 @@ def main() -> None:
             uq = sampling_uncertainty(labels)
             ex = records[0]["example"]
             mode = mode_stable(labels)
+            counts = {k: labels.count(k) for k in LABEL_ORDER}
+            max_count = max(counts.values())
+            tie = sum(v == max_count for v in counts.values()) > 1
             out_rows.append({
                 "source": path.name,
                 "model": records[0]["model_requested"],
-                "protocol": records[0].get("protocol", "legacy"),
+                "prompt_type": records[0].get("prompt_type", "legacy"),
                 "id": example_id,
                 "group": ex["group"],
                 "verb": ex["verb"],
@@ -50,7 +57,12 @@ def main() -> None:
                 "gold": ex["label"],
                 "sample_mode": mode,
                 "sample_correct": mode == ex["label"],
+                "mode_tie": tie,
                 "n_samples": len(labels),
+                "complete_k": len(labels) == args.expected_k,
+                "sample_p_true": counts["True"] / len(labels),
+                "sample_p_false": counts["False"] / len(labels),
+                "sample_p_unknown": counts["Unknown"] / len(labels),
                 **uq,
             })
 
@@ -60,15 +72,20 @@ def main() -> None:
 
     ranking_rows = []
     if not df.empty:
-        for (model, protocol), g in df.groupby(["model", "protocol"]):
-            err = (~g["sample_correct"].astype(bool)).tolist()
+        for (model, prompt_type), g in df.groupby(["model", "prompt_type"]):
+            complete = g[g["complete_k"].astype(bool)].copy()
+            if complete.empty:
+                continue
+            err = (~complete["sample_correct"].astype(bool)).tolist()
             for signal in ("variation_ratio", "label_entropy"):
-                scores = g[signal].astype(float).tolist()
+                scores = complete[signal].astype(float).tolist()
                 ranking_rows.append({
                     "model": model,
-                    "protocol": protocol,
+                    "prompt_type": prompt_type,
                     "signal": signal,
-                    "n": len(g),
+                    "n": len(complete),
+                    "incomplete_items": int((~g["complete_k"].astype(bool)).sum()),
+                    "mode_ties": int(complete["mode_tie"].astype(bool).sum()),
                     "error_rate": float(sum(err) / len(err)),
                     "error_AUROC": binary_auroc(err, scores),
                     "error_AUPRC": average_precision(err, scores),
