@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ullm-imperfective-uncertainty"
+version = "0.1.0"
+description = "Black-box uncertainty evaluation for the Imperfective Paradox in LLMs"
+requires-python = ">=3.10"
+dependencies = [
+  "httpx>=0.27,<1",
+  "PyYAML>=6.0,<7",
+  "numpy>=2.0,<3",
+  "pandas>=2.2,<3",
+  "scipy>=1.13,<2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
