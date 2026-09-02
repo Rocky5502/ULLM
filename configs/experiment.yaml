@@ -1,0 +1,23 @@
+seed: 42
+base_url: https://api.zhizengzeng.com/v1
+input_file: data/imperfectiveNLI.json
+output_dir: results/raw
+max_concurrency: 8
+request_timeout_s: 120
+max_retries: 5
+
+deterministic:
+  temperature: 0.0
+  samples_per_item: 1
+
+sampling:
+  enabled: true
+  temperature: 0.7
+  samples_per_item: 5
+
+selective:
+  confidence_threshold: 0.80
+  disagreement_threshold: 0.40
+  teleological_overconfidence_threshold: 0.80
+
+labels: [True, False, Unknown]
