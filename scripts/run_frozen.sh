@@ -12,3 +12,4 @@ python -m ullm.run --mode sampling --prompt neutral --run-id frozen-sampling-neu
 python -m ullm.run --mode deterministic --prompt strict_logic --limit 120 --run-id robust-strict-v1
 python -m ullm.run --mode deterministic --prompt definition_aware --limit 120 --run-id robust-definition-v1
 python -m ullm.run --mode deterministic --prompt neutral --label-order "Unknown,False,True" --limit 120 --run-id robust-label-order-v1
+python -m ullm.run --mode deterministic --prompt verifier --run-id frozen-verifier-v1
