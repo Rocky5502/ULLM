@@ -1,13 +1,19 @@
-# Model IDs verified against Zhizengzeng's public model catalogue on 2026-09-02/03.
-# Always run scripts/check_models.py immediately before the frozen experiment.
+# Cross-family API panel for the frozen IASEAI'27 experiment.
+# Exact IDs are external dependencies: run scripts/check_models.py and archive
+# the returned catalogue immediately before a frozen run.
 models:
-  - id: gpt-5.4
+  - id: gpt-5.6-sol
     family: OpenAI
+    role: frontier_general
   - id: claude-sonnet-5
     family: Anthropic
+    role: frontier_general
   - id: deepseek-v4-pro
     family: DeepSeek
+    role: frontier_reasoning
   - id: qwen3.8-max
     family: Alibaba-Qwen
-  - id: llama-4-maverick
-    family: Meta
+    role: frontier_general
+  - id: gemini-3.7-flash
+    family: Google
+    role: frontier_efficient
