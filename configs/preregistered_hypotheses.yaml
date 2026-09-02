@@ -1,0 +1,22 @@
+# Directional hypotheses written before looking at the frozen results.
+hypotheses:
+  H1:
+    rq: RQ1
+    statement: "Group C should induce higher P(Unknown) than Groups A, B, and D if a model recognizes semantic under-specification."
+    primary_metric: ADG
+    direction: greater_than_zero
+  H2:
+    rq: RQ1
+    statement: "Teleological completion errors in Group C should be concentrated among high-P(True) predictions if the failure is overconfidence rather than random confusion."
+    primary_metric: TOR@0.80
+    direction: descriptive_lower_is_better
+  H3:
+    rq: RQ2
+    statement: "At least one black-box uncertainty score should rank errors better than random ordering."
+    primary_metric: error_AUROC
+    direction: greater_than_0.5
+  H4:
+    rq: RQ3
+    statement: "Uncertainty-based selective control should reduce error and TBR as coverage decreases while preserving Group-D entailments better than a blanket skeptical intervention."
+    primary_metric: AURC_and_group_D_retention
+    direction: lower_AURC_higher_retention
