@@ -21,7 +21,7 @@ prompt_robustness:
 
 label_order_robustness:
   n_examples: 120
-  alternate_order: [Unknown, False, True]
+  alternate_order: ["Unknown", "False", "True"]
 
 # The aspect-sensitive prompt is a secondary RQ3 verifier, not a primary predictor.
 verifier:
@@ -61,4 +61,4 @@ statistics:
   multiple_testing: holm
   calibration_bins: 15
 
-labels: [True, False, Unknown]
+labels: ["True", "False", "Unknown"]
