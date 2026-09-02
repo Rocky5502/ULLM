@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+title: "The Imperfective Uncertainty in Large Language Models"
+message: "Please cite the final archival paper when available; also cite the upstream ImperfectiveNLI paper when using the dataset."
+type: software
+version: 0.1.0
+date-released: 2026-09-03
+repository-code: "https://github.com/Rocky5502/ULLM"
+license: MIT
