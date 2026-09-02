@@ -33,22 +33,26 @@ Write-Host "[1/12] Validate project, preregistration, environment, and dataset"
 python scripts/preflight.py
 if ($LASTEXITCODE -ne 0) { throw "Preflight failed" }
 
-Write-Host "[2/12] Snapshot live gateway model catalogue"
+Write-Host "[2/12] Snapshot live gateway model catalogue (no completion calls yet)"
 python scripts/check_models.py
 if ($LASTEXITCODE -ne 0) { throw "Configured gateway model catalogue check failed" }
+
+Write-Host "No paid chat-completion calls have been made by this script yet."
+$smokeAnswer = Read-Host "Type SMOKE exactly to authorize the 100-call paid smoke test"
+if ($smokeAnswer -ne "SMOKE") { throw "Stopped before any paid completion call." }
 
 Write-Host "[3/12] Balanced smoke test: 20 examples x all five models"
 Invoke-ULLMRun -RunId "smoke-neutral-v1" -RunArgs @("--mode","deterministic","--prompt","neutral","--limit","20")
 
-Write-Host "[4/12] Hard-audit smoke outputs before authorizing the paid study"
+Write-Host "[4/12] Hard-audit smoke outputs before authorizing the full paid study"
 Audit-Run -RunId "smoke-neutral-v1" -Pattern "*__deterministic__neutral.jsonl" -ExpectedK 1 -OutFile "results/processed/audit_smoke.json"
 $smoke = Get-ChildItem "results/raw/smoke-neutral-v1/*__deterministic__neutral.jsonl"
 python scripts/summarize_results.py @($smoke.FullName) --bins 15 --out results/processed/summary_smoke.csv
 if ($LASTEXITCODE -ne 0) { throw "Smoke summary failed" }
 
 Write-Host "Smoke gate PASSED. Review the printed per-model rows and catalogue snapshot."
-$answer = Read-Host "Type RUN exactly to launch the paid frozen experiment"
-if ($answer -ne "RUN") { throw "Stopped before paid full run." }
+$answer = Read-Host "Type RUN exactly to authorize the remaining 15,800 main-study calls before retries"
+if ($answer -ne "RUN") { throw "Stopped after smoke and before the full paid run." }
 
 Write-Host "[5/12] Full neutral deterministic run: 400 items x 5 models"
 Invoke-ULLMRun -RunId "frozen-det-neutral-v1" -RunArgs @("--mode","deterministic","--prompt","neutral")
