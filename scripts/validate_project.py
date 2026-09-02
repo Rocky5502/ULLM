@@ -3,13 +3,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import yaml
 
-from ullm.prompts import PROMPTS
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-EXPECTED_RQ_COUNT = 3
+from ullm.prompts import PROMPTS  # noqa: E402
+
 STALE_TOKENS = (
     "gpt-5.4",
     "llama-4-maverick",
@@ -146,8 +151,15 @@ def main() -> None:
     rqs = {str(row.get("rq")) for row in hypotheses.values()}
     if rqs != {"RQ1", "RQ2", "RQ3"}:
         fail(f"hypotheses must cover exactly RQ1/RQ2/RQ3, found {sorted(rqs)}", errors)
-    if paper.count("\\paragraph{RQ1:") != 1 or paper.count("\\paragraph{RQ2:") != 1 or paper.count("\\paragraph{RQ3:") != 1:
-        fail("manuscript must contain exactly one paragraph definition for each RQ1/RQ2/RQ3", errors)
+    if (
+        paper.count("\\paragraph{RQ1:") != 1
+        or paper.count("\\paragraph{RQ2:") != 1
+        or paper.count("\\paragraph{RQ3:") != 1
+    ):
+        fail(
+            "manuscript must contain exactly one paragraph definition for each RQ1/RQ2/RQ3",
+            errors,
+        )
 
     required_generated = [
         Path("paper/generated/rq1_table.tex"),
