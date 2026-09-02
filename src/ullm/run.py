@@ -4,11 +4,12 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import platform
 import random
 import subprocess
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -36,6 +37,11 @@ def sha256(path: Path) -> str:
 
 def text_sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def canonical_sha256(value: Any) -> str:
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return text_sha256(payload)
 
 
 def git_commit() -> str | None:
@@ -73,21 +79,101 @@ def balanced_subset(examples: list[Example], n: int, seed: int) -> list[Example]
     return out
 
 
-def completed_keys(output: Path) -> set[tuple[str, int]]:
-    """Read successful-or-recorded keys so --resume never duplicates API calls."""
-    seen: set[tuple[str, int]] = set()
-    if not output.exists():
-        return seen
-    for line in output.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
+def _load_jsonl_strict(path: Path) -> list[dict[str, Any]]:
+    """Load an existing output, tolerating only a truncated final non-empty line."""
+    if not path.exists():
+        return []
+    lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows: list[dict[str, Any]] = []
+    for i, line in enumerate(lines):
         try:
-            row = json.loads(line)
-            seen.add((row["example"]["id"], int(row["repeat"])))
-        except Exception:
-            # A truncated last line should not make the whole run unrecoverable.
-            continue
+            rows.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            if i == len(lines) - 1:
+                print(f"WARNING: dropping truncated final JSONL line in {path}")
+                break
+            raise RuntimeError(f"Malformed non-final JSONL line {i + 1} in {path}") from exc
+    return rows
+
+
+def prepare_resume_output(path: Path, *, retry_failures: bool) -> None:
+    """Validate existing keys and optionally purge failed rows before a retry.
+
+    Failed rows are removed atomically before retrying, so the replacement call keeps a
+    unique (example_id, repeat) key rather than appending a duplicate that would later
+    fail the audit gate. If the process dies after the purge, a normal --resume still
+    sees those keys as missing and can safely fill them.
+    """
+    if not path.exists():
+        return
+    rows = _load_jsonl_strict(path)
+    keys = [(r.get("example", {}).get("id"), int(r.get("repeat", 0))) for r in rows]
+    duplicates = [key for key, n in Counter(keys).items() if n > 1]
+    if duplicates:
+        raise RuntimeError(f"Refusing to resume {path}: duplicate keys {duplicates[:10]}")
+    if not retry_failures:
+        return
+    kept = [
+        r
+        for r in rows
+        if not r.get("request_error") and r.get("prediction") is not None
+    ]
+    if len(kept) == len(rows):
+        return
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8", newline="\n") as f:
+        for row in kept:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+    print(f"Purged {len(rows) - len(kept)} failed rows from {path} for clean retry")
+
+
+def completed_keys(output: Path) -> set[tuple[str, int]]:
+    seen: set[tuple[str, int]] = set()
+    for row in _load_jsonl_strict(output):
+        seen.add((row["example"]["id"], int(row["repeat"])))
     return seen
+
+
+def _critical_manifest_fields(manifest: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "dataset_sha256",
+        "dataset_n",
+        "selected_n",
+        "selected_ids",
+        "models",
+        "mode",
+        "prompt_type",
+        "prompt_sha256",
+        "label_order",
+        "config_sha256",
+        "models_sha256",
+        "git_commit",
+        "max_tokens",
+    )
+    return {key: manifest.get(key) for key in keys}
+
+
+def write_or_validate_manifest(
+    path: Path, candidate: dict[str, Any], *, resume: bool
+) -> None:
+    if path.exists():
+        if not resume:
+            raise RuntimeError(f"Manifest already exists: {path}")
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        old = _critical_manifest_fields(existing)
+        new = _critical_manifest_fields(candidate)
+        if old != new:
+            diffs = [k for k in old if old[k] != new[k]]
+            raise RuntimeError(
+                "Refusing unsafe resume because frozen manifest differs in: "
+                + ", ".join(diffs)
+            )
+        print(f"Resume manifest verified: {path}")
+        return
+    path.write_text(json.dumps(candidate, indent=2), encoding="utf-8")
 
 
 async def run_model(
@@ -100,10 +186,14 @@ async def run_model(
     repeats: int,
     concurrency: int,
     seed: int,
+    max_tokens: int,
     prompt_type: str,
     label_order: tuple[str, str, str],
     resume: bool,
+    retry_failures: bool,
 ) -> None:
+    if resume:
+        prepare_resume_output(output, retry_failures=retry_failures)
     sem = asyncio.Semaphore(concurrency)
     lock = asyncio.Lock()
     already = completed_keys(output) if resume else set()
@@ -111,8 +201,9 @@ async def run_model(
 
     async def write_record(record: dict[str, Any]) -> None:
         async with lock:
-            with output.open("a", encoding="utf-8") as f:
+            with output.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                f.flush()
 
     async def one(ex: Example, rep: int) -> None:
         key = (ex.id, rep)
@@ -126,13 +217,17 @@ async def run_model(
                     "content": make_user_prompt(ex, label_order=label_order),
                 },
             ]
+            requested_seed = seed + rep
             base_record: dict[str, Any] = {
                 "timestamp_utc": datetime.now(timezone.utc).isoformat(),
                 "model_requested": model,
                 "temperature": temperature,
+                "max_tokens_requested": max_tokens,
+                "seed_requested": requested_seed,
                 "repeat": rep,
                 "prompt_type": prompt_type,
                 "prompt_sha256": text_sha256(system_prompt),
+                "messages_sha256": canonical_sha256(messages),
                 "label_order": list(label_order),
                 "example": ex.__dict__,
             }
@@ -141,7 +236,8 @@ async def run_model(
                     model=model,
                     messages=messages,
                     temperature=temperature,
-                    seed=seed + rep,
+                    max_tokens=max_tokens,
+                    seed=requested_seed,
                 )
                 try:
                     parsed = parse_prediction(result.text)
@@ -163,8 +259,8 @@ async def run_model(
                     }
                 )
             except Exception as exc:
-                # Preserve the failed key in the audit trail. A later targeted retry can
-                # be launched after filtering request_error records.
+                # Preserve failed calls in the audit trail. --resume --retry-failures
+                # atomically purges these rows before replacing them with retry calls.
                 base_record.update(
                     {
                         "model_returned": None,
@@ -184,6 +280,9 @@ async def run_model(
 
 
 async def main_async(args: argparse.Namespace) -> None:
+    if args.retry_failures and not args.resume:
+        raise SystemExit("--retry-failures requires --resume")
+
     config_path = Path(args.config)
     models_path = Path(args.models)
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
@@ -205,6 +304,7 @@ async def main_async(args: argparse.Namespace) -> None:
     if sorted(label_order) != ["False", "True", "Unknown"] or len(label_order) != 3:
         raise SystemExit("--label-order must contain True,False,Unknown exactly once")
 
+    max_tokens = int(config["max_tokens"])
     client = OpenAICompatibleClient(
         base_url=config["base_url"],
         timeout_s=config["request_timeout_s"],
@@ -220,7 +320,9 @@ async def main_async(args: argparse.Namespace) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
 
     system_prompt = get_system_prompt(prompt_type)
+    mode = config[args.mode]
     manifest = {
+        "schema_version": 2,
         "run_id": run_id,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "dataset_sha256": sha256(input_path),
@@ -230,6 +332,9 @@ async def main_async(args: argparse.Namespace) -> None:
         "selected_ids": sorted(ex.id for ex in examples),
         "models": models,
         "mode": args.mode,
+        "temperature": float(mode["temperature"]),
+        "samples_per_item": int(mode["samples_per_item"]),
+        "max_tokens": max_tokens,
         "prompt_type": prompt_type,
         "prompt_sha256": text_sha256(system_prompt),
         "label_order": list(label_order),
@@ -240,11 +345,8 @@ async def main_async(args: argparse.Namespace) -> None:
         "python": sys.version,
         "platform": platform.platform(),
     }
-    (outdir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    write_or_validate_manifest(outdir / "manifest.json", manifest, resume=args.resume)
 
-    mode = config[args.mode]
     try:
         for model in models:
             safe = model.replace("/", "_").replace(":", "_")
@@ -261,9 +363,11 @@ async def main_async(args: argparse.Namespace) -> None:
                 repeats=int(mode["samples_per_item"]),
                 concurrency=int(config["max_concurrency"]),
                 seed=int(config["seed"]),
+                max_tokens=max_tokens,
                 prompt_type=prompt_type,
                 label_order=label_order,  # type: ignore[arg-type]
                 resume=args.resume,
+                retry_failures=args.retry_failures,
             )
     finally:
         await client.aclose()
@@ -301,7 +405,12 @@ def main() -> None:
     p.add_argument(
         "--resume",
         action="store_true",
-        help="Resume an existing run without duplicating completed example/repeat keys",
+        help="Resume a compatible frozen run without duplicating completed keys",
+    )
+    p.add_argument(
+        "--retry-failures",
+        action="store_true",
+        help="With --resume, purge request/parse failures and replace them cleanly",
     )
     args = p.parse_args()
     asyncio.run(main_async(args))
