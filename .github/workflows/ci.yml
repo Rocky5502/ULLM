@@ -27,6 +27,8 @@ jobs:
         env:
           PYTHONPATH: src
         run: python scripts/validate_project.py
+      - name: Audit manuscript citation keys
+        run: python scripts/validate_references.py
       - name: Unit tests
         env:
           PYTHONPATH: src
