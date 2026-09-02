@@ -1,0 +1,182 @@
+\documentclass[letterpaper]{article}
+\usepackage[submission]{aaai2027}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{caption}
+\frenchspacing
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc}
+\usepackage{xcolor}
+\pdfinfo{/TemplateVersion (2027.1)}
+\setcounter{secnumdepth}{1}
+
+\title{The Imperfective Uncertainty in Large Language Models}
+\author{Anonymous Submission}
+\affiliations{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Large language models (LLMs) can mistake an action in progress for an action completed, a failure recently isolated by the ImperfectiveNLI diagnostic benchmark. We study a complementary question: \emph{what uncertainty do models express when completion is not semantically licensed?} The imperfective paradox provides an unusually clean test because ambiguous telic progressives leave real-world completion under-specified while the corresponding natural-language-inference (NLI) label is determinately \textsc{Unknown}. We therefore distinguish \emph{semantic uncertainty} about the event from \emph{predictive uncertainty} about the model's inference. Across five cross-family frontier LLM APIs, we will evaluate structured verbal confidence, repeated-sampling disagreement, teleological overconfidence, calibration, and selective risk control on ImperfectiveNLI. Our protocol preserves the original benchmark's group accuracy, Teleological Bias Rate, and Aspectual Awareness Gap while adding proper scoring rules, calibration metrics, and risk--coverage analysis. Results and statistical estimates are intentionally marked \textbf{TBD} until the frozen API experiment is executed. The study is designed as a reproducible evaluation of whether uncertainty can expose or control erroneous assumptions of event completion without inducing indiscriminate skepticism toward valid atelic entailments.
+\end{abstract}
+
+\section{Introduction}
+LLMs are increasingly used as components of agents, monitors, and decision-support systems that must infer whether described actions have actually occurred. A deceptively small linguistic distinction can matter: ``the technician was repairing the brake'' describes a process, whereas ``the technician repaired the brake'' conventionally asserts a completed result. Conflating these states can turn an unfinished action into an assumed fact.
+
+The Imperfective Paradox formalizes this contrast. Progressive activities such as \emph{running} license occurrence of the activity, whereas progressive accomplishments such as \emph{building a house} do not entail attainment of their inherent endpoint \citep{vendler-1957-verbs,dowty-1979-word,comrie-1976-aspect}. Ma and Miyao's ACL 2026 study introduced ImperfectiveNLI and showed that several open-weight LLMs display a strong \emph{Teleological Bias}: they infer completion for goal-directed events, sometimes even when context explicitly cancels the endpoint \citep{ma-miyao-2026-imperfective}. The same study found that aggressive prompting can reduce that bias yet over-correct on atelic activities, producing a calibration crisis.
+
+We argue that this benchmark exposes a second, safety-relevant failure mode that has not been the primary object of study: \textbf{imperfective uncertainty}. In the critical ambiguous-accomplishment condition, the described event outcome is semantically unresolved, but the NLI decision itself is not ambiguous: the hypothesis must be labeled \textsc{Unknown}. Thus a competent model should be \emph{confidently uncertain about the event}. A model that assigns high probability to \textsc{True} is teleologically overconfident; a model that spreads probability uniformly across labels is predictively confused. Figure~\ref{fig:concept} illustrates this distinction.
+
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{\input{figures/fig_concept.tex}}
+\caption{Semantic uncertainty is not the same as predictive uncertainty. In Group C, completion is under-specified, yet the correct NLI label is determinately \textsc{Unknown}.}
+\label{fig:concept}
+\end{figure}
+
+This distinction connects aspectual reasoning to work on confidence calibration \citep{guo-etal-2017-calibration,desai-durrett-2020-calibration,jiang-etal-2021-calibration}, confidence elicitation in instruction-tuned LLMs \citep{tian-etal-2023-calibration,xiong-etal-2024-uncertainty}, semantic uncertainty \citep{farquhar-etal-2024-semantic}, and selective prediction under ambiguity \citep{cole-etal-2023-ambiguous,geifman-el-yaniv-2019-selectivenet}. Our goal is not to reproduce the earlier paper with newer models, but to use its controlled semantics as a laboratory for measuring when uncertainty signals are informative enough to support risk control.
+
+\paragraph{Contributions.} We make three planned contributions. First, we formulate the distinction between event-level semantic uncertainty and model-level predictive uncertainty for the imperfective paradox. Second, we benchmark two black-box uncertainty families---structured verbal label probabilities and repeated-sampling disagreement---on five frontier API models. Third, we evaluate uncertainty-aware selective control using risk--coverage analysis, asking whether teleological failures can be reduced without the atelic collapse caused by blanket skeptical prompting. All empirical values remain \textbf{TBD} until execution.
+
+\section{Background and Related Work}
+\subsection{Aspect, Telicity, and Imperfective Inference}
+Lexical aspect distinguishes homogeneous activities from goal-bounded accomplishments \citep{vendler-1957-verbs}. Recent NLP work shows that models can encode aspectual information but do not necessarily apply it robustly in inference \citep{ma-2024-lexical}. This gap parallels targeted diagnostics showing that language models can rely on shallow heuristics or underweight contextual negation \citep{ettinger-2020-bert,kassner-schutze-2020-negated}. ImperfectiveNLI sharpens the problem into controlled minimal pairs and directly measures completion hallucination \citep{ma-miyao-2026-imperfective}.
+
+\subsection{Uncertainty and Calibration in LLMs}
+Calibration asks whether stated confidence corresponds to empirical correctness \citep{guo-etal-2017-calibration}. Prior work has found substantial calibration failures in language models \citep{jiang-etal-2021-calibration}, while instruction-following LLMs can sometimes provide useful verbalized confidence estimates \citep{tian-etal-2023-calibration}. Black-box methods are particularly relevant to API models because internal token distributions may be unavailable or non-comparable. Repeated sampling provides a second family of uncertainty signals based on disagreement across outputs; on ambiguous question answering, repetition-based confidence can outperform likelihood or self-verification baselines \citep{cole-etal-2023-ambiguous}. Semantic-entropy methods similarly emphasize uncertainty over meanings rather than surface strings \citep{farquhar-etal-2024-semantic}.
+
+Our setting differs from ordinary ``model does not know the answer'' evaluation. The world state itself is under-specified in Group C. The correct response is to recognize that under-specification rather than to guess a likely completion.
+
+\section{Task and Data}
+We reuse ImperfectiveNLI from \citet{ma-miyao-2026-imperfective}. The dataset contains 400 English NLI examples generated as minimal pairs from 100 telic and 100 atelic verbs. It crosses telicity with contextual information to define four conditions, summarized in Table~\ref{tab:groups}. The telic verbs are additionally categorized into Change of State, Creation, Consumption, and Motion to Goal classes, enabling paired semantic analysis.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Group & Event type & Context & Gold \\
+\midrule
+A & Telic accomplishment & Interrupted & False \\
+B & Atelic activity & Interrupted & True \\
+C & Telic accomplishment & Ambiguous & Unknown \\
+D & Atelic activity & Ambiguous & True \\
+\bottomrule
+\end{tabular}
+\caption{ImperfectiveNLI's four controlled conditions. Group C is the primary semantic-uncertainty probe.}
+\label{tab:groups}
+\end{table}
+
+We do not silently re-license the benchmark. The upstream paper states that the released dataset uses CC BY-NC 4.0 for research use; our artifact records attribution and downloads the upstream file with a checksum rather than treating it as original project data.
+
+\section{Research Questions}
+\paragraph{RQ1: Uncertainty Recognition.} \emph{Do frontier API LLMs correctly recognize semantic uncertainty in imperfective telic events, and are their confidence distributions calibrated across Groups A--D?} The primary Group-C expectation is high $P(\textsc{Unknown})$, not merely high entropy.
+
+\paragraph{RQ2: Uncertainty Faithfulness.} \emph{Which black-box uncertainty signals---verbalized label probabilities or repeated-sampling disagreement---best identify aspectual errors, teleological completion bias, and overconfidence?} We compare error ranking, proper scoring rules, calibration, and semantic subclasses.
+
+\paragraph{RQ3: Uncertainty-Aware Control.} \emph{Can selective prediction reduce teleological completion errors at useful coverage and API cost without degrading valid atelic entailments?} We study answer/defer and optional recheck policies over threshold sweeps rather than choosing a single favorable threshold post hoc.
+
+\section{Method}
+\subsection{API Model Panel}
+We use five model families through a common OpenAI-compatible gateway: GPT-5.4, Claude Sonnet 5, DeepSeek V4 Pro, Qwen 3.8 Max, and Llama 4 Maverick. Model identifiers are treated as mutable external dependencies: the artifact queries the gateway immediately before the frozen run and records both requested and returned model identifiers, timestamps, decoding settings, token usage, and the dataset checksum.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Family & Gateway model ID & Access \\
+\midrule
+OpenAI & \texttt{gpt-5.4} & API \\
+Anthropic & \texttt{claude-sonnet-5} & API \\
+DeepSeek & \texttt{deepseek-v4-pro} & API \\
+Qwen & \texttt{qwen3.8-max} & API \\
+Meta & \texttt{llama-4-maverick} & API \\
+\bottomrule
+\end{tabular}
+\caption{Initial cross-family panel. Exact availability is frozen at experiment time.}
+\label{tab:models}
+\end{table}
+
+\subsection{Confidence Elicitation}
+For every item, the model returns only a JSON object containing (i) a label in \{True, False, Unknown\}, (ii) a normalized probability distribution $p=(p_T,p_F,p_U)$, and (iii) a one-sentence rationale for qualitative error analysis. We use a strict-logic instruction that forbids assuming endpoint attainment from typicality. The deterministic condition uses temperature 0. To obtain a model-agnostic sampling signal, we additionally draw $K=5$ stochastic labels at temperature 0.7, recording variation ratio and normalized label entropy. We do not rely on provider-specific log probabilities for the primary analysis.
+
+\subsection{Metrics}
+We retain the original group-wise accuracy, Teleological Bias Rate ($\mathrm{TBR}_C$), and Aspectual Awareness Gap $\Delta_{AA}=\mathrm{ACC}_D-\mathrm{TBR}_C$ \citep{ma-miyao-2026-imperfective}. We add multiclass Brier score, negative log-likelihood, and expected calibration error. For this study we introduce three descriptive measures:
+\begin{align}
+\mathrm{SUR} &= \mathbb{E}[p_U \mid C],\\
+\mathrm{TOR}_{\tau} &= \Pr(p_T\ge \tau \mid C),\\
+\mathrm{ADG} &= \mathbb{E}[p_U\mid C]-\mathbb{E}[p_U\mid A,B,D].
+\end{align}
+SUR (Semantic Uncertainty Recognition) measures confidence in the correct uncertainty label; TOR (Teleological Overconfidence Rate) quantifies confidently asserted completion; and ADG (Ambiguity Discrimination Gap) tests whether the model selectively raises uncertainty for the condition where it is semantically required. We use $\tau=.80$ as a pre-declared descriptive threshold and report threshold sweeps where relevant. These are proposed paper-specific metrics, not established community standards.
+
+\subsection{Selective Control}
+Selective prediction permits a model to defer difficult inputs rather than forcing every answer \citep{geifman-el-yaniv-2019-selectivenet}. We rank examples by each uncertainty signal and compute selective risk as coverage decreases. Primary reporting uses the entire risk--coverage curve and AURC, avoiding cherry-picked thresholds. A secondary recheck policy sends deferred cases to an aspect-sensitive verifier prompt; its incremental accuracy, TBR, coverage, and token cost are reported separately.
+
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{\input{figures/fig_pipeline.tex}}
+\caption{Experimental pipeline for the three RQs. The design is fully black-box and stores raw responses for auditability.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Statistical Protocol}
+Because conditions are paired by lexical verbs, uncertainty intervals should respect this structure. We therefore bootstrap by verb cluster (10,000 resamples) for primary contrasts and report 95\% confidence intervals. Families of multi-model hypothesis tests use Holm correction. Selective thresholds, when optimized rather than swept, are tuned on verb-disjoint calibration folds and evaluated on held-out verbs.
+
+\section{Results and Analysis}
+\subsection{RQ1: Do Models Recognize Imperfective Uncertainty?}
+\textbf{TBD after frozen API run.} Table~\ref{tab:rq1} will report Group A--D accuracy, TBR, $\Delta_{AA}$, SUR, TOR@0.80, ECE, Brier score, and 95\% verb-cluster bootstrap intervals for all five models.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{@{}lccccccccc@{}}
+\toprule
+Model & Acc A & Acc B & Acc C & Acc D & TBR$\downarrow$ & $\Delta_{AA}\uparrow$ & SUR$\uparrow$ & TOR$.80\downarrow$ & ECE$\downarrow$ \\
+\midrule
+GPT-5.4 & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD \\
+Claude Sonnet 5 & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD \\
+DeepSeek V4 Pro & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD \\
+Qwen 3.8 Max & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD \\
+Llama 4 Maverick & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD & TBD \\
+\bottomrule
+\end{tabular}
+\caption{RQ1 results. No values are inserted until the corresponding raw API artifacts exist.}
+\label{tab:rq1}
+\end{table*}
+
+\subsection{RQ2: Which Uncertainty Signal Is Faithful?}
+\textbf{TBD.} We will compare verbalized confidence, normalized predictive entropy, sampling variation ratio, and sampling label entropy for error ranking and calibration. Analyses will be stratified by Group C vs. other groups and by the four telic semantic classes.
+
+\subsection{RQ3: Can Uncertainty Control Risk?}
+\textbf{TBD.} We will report risk--coverage curves, AURC, TBR at matched coverage, Group-D retention, recheck rate, and token cost. The central test is whether uncertainty-aware control avoids the indiscriminate atelic degradation previously observed under aggressive global counterfactual prompting.
+
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{\input{figures/fig_results_tbd.tex}}
+\caption{Publication layout reserved for the primary result visualization. The source is vector/editable; synthetic numbers are deliberately not used.}
+\label{fig:tbd}
+\end{figure}
+
+\section{Safety Relevance and Scope}
+The benchmark directly measures a linguistic inference failure, not end-to-end system safety. Nevertheless, completion assumptions are operationally important in systems that consume natural-language state reports. A monitor that maps ``was verifying'', ``was shutting down'', ``was patching'', or ``was repairing'' to a completed state may propagate false assurances into downstream decisions. Our contribution is therefore best positioned under \emph{evaluations and risk quantification}, with selective prediction as a lightweight control mechanism. We will not claim that lower TBR on ImperfectiveNLI by itself establishes safer deployment behavior.
+
+\section{Limitations and Ethics}
+First, ImperfectiveNLI is controlled and English-only; its template structure may overstate performance relative to natural discourse. Second, theoretical NLI labels do not replace empirical human-judgment studies. Third, API models and routed implementations can change over time, so our model manifest records the exact run date and returned identifiers. Fourth, verbal confidence can be strategic or unfaithful rather than a transparent internal probability, motivating the comparison with repeated sampling. Fifth, our selective-control results will be benchmark-specific unless validated on a separate naturalistic completion-inference set.
+
+The dataset is reused under the terms reported by its authors and is not silently re-licensed as project-owned data. No private or personally identifiable data are required. API-generated rationales are retained only as research outputs and are not treated as hidden chain-of-thought. We disclose the use of AI assistance for code/manuscript drafting and maintain human responsibility for experimental design, verification, and all final claims.
+
+\section{Statement of Contributions}
+This paper extends prior work on the imperfective paradox with a new research question and experimental axis rather than a model-only replication. It formalizes semantic-vs-predictive uncertainty for aspectual inference, adds cross-family black-box confidence and repeated-sampling evaluation, proposes uncertainty-specific diagnostics, and evaluates selective risk control. The earlier dataset and original teleological-bias metrics are explicitly attributed; all new empirical claims will be traceable to the released run manifest and raw outputs.
+
+\section{Conclusion}
+We introduce a study design for \emph{imperfective uncertainty}: whether LLMs can express and use uncertainty appropriately when an event's endpoint is not semantically licensed. The imperfective paradox creates a revealing distinction between an uncertain world state and a determinate \textsc{Unknown} inference. By combining calibrated confidence, sampling disagreement, and selective control, the planned evaluation asks not only whether a model is wrong, but whether its uncertainty makes that failure detectable and controllable. Empirical conclusions remain \textbf{TBD} pending the frozen experiment.
+
+\input{references_manual.tex}
+\end{document}
