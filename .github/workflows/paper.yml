@@ -4,10 +4,14 @@ on:
   push:
     paths:
       - 'paper/**'
+      - 'scripts/validate_references.py'
+      - 'scripts/check_latex_log.py'
       - '.github/workflows/paper.yml'
   pull_request:
     paths:
       - 'paper/**'
+      - 'scripts/validate_references.py'
+      - 'scripts/check_latex_log.py'
       - '.github/workflows/paper.yml'
   workflow_dispatch:
 
@@ -16,13 +20,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compile AAAI-style manuscript
+      - name: Audit citation keys before compile
+        run: python scripts/validate_references.py
+      - name: Compile provisional AAAI-style manuscript
         uses: xu-cheng/latex-action@v3
         with:
           root_file: main.tex
           working_directory: paper
           latexmk_use_xelatex: false
           args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode
+      - name: Audit final LaTeX log quality
+        run: python scripts/check_latex_log.py paper/main.log
       - name: Upload compiled manuscript
         uses: actions/upload-artifact@v4
         with:
