@@ -6,18 +6,46 @@ max_concurrency: 8
 request_timeout_s: 120
 max_retries: 5
 
+# Primary scientific condition. It does NOT teach the telicity rule.
+primary_prompt: neutral
+
+# Full 400-item primary run: one structured probability distribution per item.
 deterministic:
   temperature: 0.0
   samples_per_item: 1
 
+# RQ2 black-box uncertainty: repeated generations on the same item.
 sampling:
   enabled: true
   temperature: 0.7
   samples_per_item: 5
 
+# Robustness audit: run on a fixed A/B/C/D-balanced subset, not used to choose
+# the primary prompt after seeing results.
+prompt_robustness:
+  n_examples: 120
+  prompt_types: [neutral, strict_logic, definition_aware]
+  label_orders:
+    - [True, False, Unknown]
+    - [Unknown, False, True]
+
+# RQ3 policies are evaluated as sweeps; these thresholds are only predeclared
+# operating points for compact tables.
 selective:
-  confidence_threshold: 0.80
+  confidence_thresholds: [0.60, 0.70, 0.80, 0.90]
+  coverage_points: [1.00, 0.90, 0.80, 0.70, 0.50]
+  target_risks: [0.10, 0.05]
   disagreement_threshold: 0.40
   teleological_overconfidence_threshold: 0.80
+  verifier_prompt: verifier
+
+statistics:
+  bootstrap_replicates: 10000
+  bootstrap_cluster: verb
+  confidence_level: 0.95
+  ece_bins: 15
+  holm_correction: true
+  calibration_fold_fraction: 0.25
+  calibration_split_unit: verb
 
 labels: [True, False, Unknown]
