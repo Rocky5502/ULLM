@@ -29,6 +29,8 @@ jobs:
         run: python scripts/validate_project.py
       - name: Audit manuscript citation keys
         run: python scripts/validate_references.py
+      - name: Enforce pre-run manuscript evidence state
+        run: python scripts/manuscript_evidence_gate.py --mode pre
       - name: Unit tests
         env:
           PYTHONPATH: src
