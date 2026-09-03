@@ -113,11 +113,7 @@ def prepare_resume_output(path: Path, *, retry_failures: bool) -> None:
         raise RuntimeError(f"Refusing to resume {path}: duplicate keys {duplicates[:10]}")
     if not retry_failures:
         return
-    kept = [
-        r
-        for r in rows
-        if not r.get("request_error") and r.get("prediction") is not None
-    ]
+    kept = [r for r in rows if not r.get("request_error") and r.get("prediction") is not None]
     if len(kept) == len(rows):
         return
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -145,6 +141,7 @@ def _critical_manifest_fields(manifest: dict[str, Any]) -> dict[str, Any]:
         "selected_ids",
         "models",
         "mode",
+        "execution_mode",
         "prompt_type",
         "prompt_sha256",
         "label_order",
@@ -156,9 +153,7 @@ def _critical_manifest_fields(manifest: dict[str, Any]) -> dict[str, Any]:
     return {key: manifest.get(key) for key in keys}
 
 
-def write_or_validate_manifest(
-    path: Path, candidate: dict[str, Any], *, resume: bool
-) -> None:
+def write_or_validate_manifest(path: Path, candidate: dict[str, Any], *, resume: bool) -> None:
     if path.exists():
         if not resume:
             raise RuntimeError(f"Manifest already exists: {path}")
@@ -174,6 +169,53 @@ def write_or_validate_manifest(
         print(f"Resume manifest verified: {path}")
         return
     path.write_text(json.dumps(candidate, indent=2), encoding="utf-8")
+
+
+def write_request_plan(
+    path: Path,
+    *,
+    models: list[str],
+    examples: list[Example],
+    temperature: float,
+    repeats: int,
+    seed: int,
+    max_tokens: int,
+    prompt_type: str,
+    label_order: tuple[str, str, str],
+) -> int:
+    """Materialize the exact planned request hashes without contacting any provider.
+
+    The plan deliberately stores hashes and IDs rather than model outputs. It is a
+    zero-API rehearsal artifact for checking call counts, seeds, prompts, label order,
+    and per-example request construction before a paid run.
+    """
+    system_prompt = get_system_prompt(prompt_type)
+    count = 0
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        for model in models:
+            for ex in examples:
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": make_user_prompt(ex, label_order=label_order)},
+                ]
+                message_hash = canonical_sha256(messages)
+                for rep in range(repeats):
+                    record = {
+                        "model_requested": model,
+                        "example_id": ex.id,
+                        "group": ex.group,
+                        "repeat": rep,
+                        "seed_requested": seed + rep,
+                        "temperature": temperature,
+                        "max_tokens_requested": max_tokens,
+                        "prompt_type": prompt_type,
+                        "prompt_sha256": text_sha256(system_prompt),
+                        "messages_sha256": message_hash,
+                        "label_order": list(label_order),
+                    }
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                    count += 1
+    return count
 
 
 async def run_model(
@@ -212,10 +254,7 @@ async def run_model(
         async with sem:
             messages = [
                 {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": make_user_prompt(ex, label_order=label_order),
-                },
+                {"role": "user", "content": make_user_prompt(ex, label_order=label_order)},
             ]
             requested_seed = seed + rep
             base_record: dict[str, Any] = {
@@ -282,6 +321,8 @@ async def run_model(
 async def main_async(args: argparse.Namespace) -> None:
     if args.retry_failures and not args.resume:
         raise SystemExit("--retry-failures requires --resume")
+    if args.dry_run and (args.resume or args.retry_failures):
+        raise SystemExit("--dry-run is a fresh rehearsal and cannot be combined with resume flags")
 
     config_path = Path(args.config)
     models_path = Path(args.models)
@@ -305,26 +346,19 @@ async def main_async(args: argparse.Namespace) -> None:
         raise SystemExit("--label-order must contain True,False,Unknown exactly once")
 
     max_tokens = int(config["max_tokens"])
-    client = OpenAICompatibleClient(
-        base_url=config["base_url"],
-        timeout_s=config["request_timeout_s"],
-        max_retries=config["max_retries"],
-    )
-
     run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     outdir = Path(config["output_dir"]) / run_id
     if outdir.exists() and not args.resume:
-        raise SystemExit(
-            f"Run directory already exists: {outdir}. Use --resume or choose --run-id."
-        )
+        raise SystemExit(f"Run directory already exists: {outdir}. Use --resume or choose --run-id.")
     outdir.mkdir(parents=True, exist_ok=True)
 
     system_prompt = get_system_prompt(prompt_type)
     mode = config[args.mode]
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "run_id": run_id,
         "created_utc": datetime.now(timezone.utc).isoformat(),
+        "execution_mode": "dry_run" if args.dry_run else "live",
         "dataset_sha256": sha256(input_path),
         "dataset_path": str(input_path),
         "dataset_n": len(examples_all),
@@ -347,6 +381,31 @@ async def main_async(args: argparse.Namespace) -> None:
     }
     write_or_validate_manifest(outdir / "manifest.json", manifest, resume=args.resume)
 
+    if args.dry_run:
+        plan_path = outdir / "request_plan.jsonl"
+        planned = write_request_plan(
+            plan_path,
+            models=models,
+            examples=examples,
+            temperature=float(mode["temperature"]),
+            repeats=int(mode["samples_per_item"]),
+            seed=int(config["seed"]),
+            max_tokens=max_tokens,
+            prompt_type=prompt_type,
+            label_order=label_order,  # type: ignore[arg-type]
+        )
+        expected = len(models) * len(examples) * int(mode["samples_per_item"])
+        if planned != expected:
+            raise RuntimeError(f"Dry-run plan count mismatch: expected {expected}, wrote {planned}")
+        print(f"DRY RUN ONLY: wrote {planned:,} planned requests to {plan_path}")
+        print("No API client was created and no network request was made.")
+        return
+
+    client = OpenAICompatibleClient(
+        base_url=config["base_url"],
+        timeout_s=config["request_timeout_s"],
+        max_retries=config["max_retries"],
+    )
     try:
         for model in models:
             safe = model.replace("/", "_").replace(":", "_")
@@ -377,9 +436,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--config", default="configs/experiment.yaml")
     p.add_argument("--models", default="configs/models.yaml")
-    p.add_argument(
-        "--mode", choices=["deterministic", "sampling"], default="deterministic"
-    )
+    p.add_argument("--mode", choices=["deterministic", "sampling"], default="deterministic")
     p.add_argument(
         "--prompt",
         choices=sorted(PROMPTS),
@@ -411,6 +468,11 @@ def main() -> None:
         "--retry-failures",
         action="store_true",
         help="With --resume, purge request/parse failures and replace them cleanly",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Write a manifest and exact request-hash plan without creating an API client",
     )
     args = p.parse_args()
     asyncio.run(main_async(args))
