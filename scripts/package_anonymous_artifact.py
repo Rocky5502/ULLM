@@ -28,8 +28,9 @@ INCLUDE_DIRS = (
     "tests",
 )
 
+# Only provenance/legal metadata is redistributed. The benchmark bytes and the normal
+# development data README are intentionally omitted from a review-time anonymous ZIP.
 DATA_FILES = (
-    "data/README.md",
     "data/MANIFEST.json",
     "data/THIRD_PARTY_DATA.md",
 )
@@ -52,6 +53,9 @@ FORBIDDEN_FILENAMES = {
     "imperfectiveNLI.json",
     "MANIFEST.local.json",
     "dataset_manifest.json",
+    # The packager contains the identity-denylist by definition, so it cannot scan/package
+    # itself without triggering a false positive. Review artifacts do not need this utility.
+    "package_anonymous_artifact.py",
 }
 
 # Keep this list specific enough to avoid false positives in scientific prose.
