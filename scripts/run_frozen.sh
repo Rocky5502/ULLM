@@ -21,9 +21,12 @@ audit_run() {
     echo "No outputs found for ${run_id}/${pattern}" >&2
     exit 1
   fi
+  local manifest="results/raw/${run_id}/manifest.json"
   python scripts/audit_run.py "${files[@]}" \
-    --manifest "results/raw/${run_id}/manifest.json" \
+    --manifest "$manifest" \
     --expected-k "$expected_k" --out "$out"
+  python scripts/audit_completion_budget.py "${files[@]}"
+  python scripts/audit_model_controls.py "${files[@]}" --manifest "$manifest"
 }
 
 seal_run() {
@@ -42,19 +45,19 @@ echo "[2/12] Snapshot live gateway model catalogue (no completion calls yet)"
 python scripts/check_models.py
 
 echo "No paid chat-completion calls have been made by this script yet."
-printf 'Type SMOKE exactly to authorize the 100-call paid smoke test: '
+printf 'Type SMOKE exactly to authorize the 100-call paid v4 smoke test: '
 read -r smoke_answer
 [[ "$smoke_answer" == "SMOKE" ]] || { echo "Stopped before any paid completion call."; exit 1; }
 
-echo "[3/12] Balanced smoke test: 20 examples x all five models"
-run_or_resume smoke-neutral-v1 --mode deterministic --prompt neutral --limit 20
+echo "[3/12] Balanced v4 smoke: 20 examples x all five models"
+run_or_resume smoke-neutral-v4 --mode deterministic --prompt neutral --limit 20
 
-echo "[4/12] Hard-audit and integrity-seal smoke before authorizing the full paid study"
-audit_run smoke-neutral-v1 '*__deterministic__neutral.jsonl' 1 results/processed/audit_smoke.json
-seal_run smoke-neutral-v1
-smoke=(results/raw/smoke-neutral-v1/*__deterministic__neutral.jsonl)
-python scripts/summarize_results.py "${smoke[@]}" --bins 15 --out results/processed/summary_smoke.csv
-printf 'Smoke gate PASSED. Review the catalogue/routing/output/checksum evidence. Type RUN exactly to authorize the remaining 15,800 main-study calls before retries: '
+echo "[4/12] Hard-audit completion budget + model controls + integrity seal before full paid study"
+audit_run smoke-neutral-v4 '*__deterministic__neutral.jsonl' 1 results/processed/audit_smoke_v4.json
+seal_run smoke-neutral-v4
+smoke=(results/raw/smoke-neutral-v4/*__deterministic__neutral.jsonl)
+python scripts/summarize_results.py "${smoke[@]}" --bins 15 --out results/processed/summary_smoke_v4.csv
+printf 'V4 smoke gate PASSED. Type RUN exactly to authorize the remaining 15,800 main-study calls before retries: '
 read -r answer
 [[ "$answer" == "RUN" ]] || { echo "Stopped after smoke and before the full paid run."; exit 1; }
 
@@ -95,4 +98,4 @@ echo "[12/12] Final local tests and post-run environment snapshot"
 pytest -q
 python scripts/environment_snapshot.py
 
-echo "DONE: frozen calls, audits, SHA-256 evidence manifests, analysis, figures, and manuscript tables completed."
+echo "DONE: frozen calls, hard audits, SHA-256 evidence manifests, analysis, figures, and manuscript tables completed."
