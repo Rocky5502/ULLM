@@ -123,24 +123,12 @@ D & Atelic activity & Ambiguous & True \\
 
 \section{Experimental Design}
 \subsection{API Model Panel}
-We predeclare five model families through a common OpenAI-compatible gateway: \texttt{gpt-5.6-sol}, \texttt{claude-sonnet-5}, \texttt{deepseek-v4-pro}, \texttt{qwen3.8-max}, and \texttt{gemini-3.7-flash}. These are gateway routing identifiers, not claims about immutable vendor-direct checkpoints. Immediately before the frozen run, the artifact queries the live gateway catalog and stores the catalog snapshot. Every response records both the requested and returned identifier, timestamp, decoding settings, request identifier when available, latency, and token usage. Scientific claims therefore attach to the endpoints actually observed on the run date.
+We predeclare five model families through a common OpenAI-compatible gateway: \texttt{gpt-5.6-sol}, \texttt{claude-sonnet-5}, \texttt{deepseek-v4-pro}, \texttt{qwen3.8-max}, and \texttt{gemini-3.7-flash}. These are gateway routing identifiers, not claims about immutable vendor-direct checkpoints. Immediately before the frozen run, the artifact queries the live gateway catalog and stores the catalog snapshot. Every response records both the requested and returned identifier, timestamp, decoding settings, request identifier when available, latency, and token usage. Scientific claims in this paper therefore refer to the evaluated gateway routes at the recorded execution time rather than immutable provider checkpoints.
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{@{}lll@{}}
-\toprule
-Family & Gateway model ID & Access \\
-\midrule
-OpenAI & \texttt{gpt-5.6-sol} & API \\
-Anthropic & \texttt{claude-sonnet-5} & API \\
-DeepSeek & \texttt{deepseek-v4-pro} & API \\
-Alibaba--Qwen & \texttt{qwen3.8-max} & API \\
-Google & \texttt{gemini-3.7-flash} & API \\
-\bottomrule
-\end{tabular}
-\caption{Predeclared cross-family gateway panel. Availability and returned IDs are frozen at execution time.}
-\label{tab:models}
+\input{generated/model_panel.tex}
 \end{table}
 
 No large local model is required. This is intentional: the primary contribution concerns black-box uncertainty signals obtainable under realistic API access constraints, while the gateway-routing limitation is treated explicitly as a threat to validity.
@@ -241,6 +229,8 @@ Each frozen run has a stable run identifier and its own output directory. The ma
 Before analysis, an automated audit validates each output against its frozen manifest. It checks malformed JSONL, duplicate example--repeat keys, exact ID coverage, repeat-index sets, expected row count, request/parse failures, label/argmax consistency, probability normalization, prompt hash, label order, decoding settings, model-file coverage, and current dataset/config hashes. A failed audit stops downstream analysis. Interrupted runs can resume only when critical manifest fields match; failed request/parse rows can be atomically purged and replaced without introducing duplicate keys.
 
 The raw gateway key is read only from the local environment variable \texttt{ZZZ\_API\_KEY}; it is never stored in Git. Windows and POSIX scripts execute the same smoke gate, paid calls, audits, analyses, vector figures, and generated LaTeX tables. Numerical table cells are produced by code from audited CSVs rather than copied manually into the manuscript.
+
+\input{execution_validation_smoke_20260903.tex}
 
 \section{Results and Analysis}
 All empirical values in this section remain \textbf{TBD} until the corresponding raw artifacts exist and the audit gate passes. The table and figure layout is frozen in advance to reduce flexibility in result selection.
