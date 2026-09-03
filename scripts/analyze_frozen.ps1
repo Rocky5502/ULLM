@@ -2,9 +2,25 @@ $ErrorActionPreference = "Stop"
 $env:PYTHONPATH = "src"
 
 function Invoke-CheckedPython {
-    param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
-    python @Args
-    if ($LASTEXITCODE -ne 0) { throw "Python command failed: python $($Args -join ' ')" }
+    param([Parameter(ValueFromRemainingArguments=$true)][object[]]$Args)
+
+    # PowerShell can bind an explicitly parenthesized array argument as one nested
+    # object when it crosses a function boundary. Flatten nested arrays here so
+    # each JSONL path is forwarded to Python as its own argv element rather than
+    # as one space-joined filename.
+    $flatArgs = @()
+    foreach ($arg in $Args) {
+        if ($arg -is [System.Array]) {
+            foreach ($item in $arg) {
+                $flatArgs += [string]$item
+            }
+        } else {
+            $flatArgs += [string]$arg
+        }
+    }
+
+    & python @flatArgs
+    if ($LASTEXITCODE -ne 0) { throw "Python command failed: python $($flatArgs -join ' ')" }
 }
 
 $detDir = "results/raw/frozen-det-neutral-v1"
