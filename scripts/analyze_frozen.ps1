@@ -55,6 +55,6 @@ Write-Host "[11/12] Publication vector figures"
 python scripts/make_result_figures.py --summary results/processed/summary_neutral.csv --sampling results/processed/sampling.csv --ranking results/processed/uncertainty_ranking.csv --selective results/processed/selective.csv --pairwise results/processed/pairwise.csv --robustness results/processed/prompt_robustness.csv --recheck results/processed/recheck.csv --outdir results/figures
 
 Write-Host "[12/12] Auto-generate LaTeX result tables (no hand-copied numbers)"
-python scripts/make_paper_tables.py --summary results/processed/summary_neutral.csv --bootstrap results/processed/summary_bootstrap.csv --ranking results/processed/uncertainty_ranking.csv --recheck results/processed/recheck.csv --outdir paper/generated
+python scripts/make_paper_tables.py --summary results/processed/summary_neutral.csv --bootstrap results/processed/summary_bootstrap.csv --ranking results/processed/uncertainty_ranking.csv --ranking-bootstrap results/processed/uncertainty_ranking_bootstrap.csv --recheck results/processed/recheck.csv --outdir paper/generated
 
 Write-Host "Analysis complete. Every manuscript number is now generated from PASS-audited artifacts."
