@@ -11,26 +11,26 @@ jobs:
       - name: Checkout exact frozen experiment commit
         uses: actions/checkout@v4
         with:
-          ref: 8b4ccab4509e42da7d315e1161085e5a99591181
+          ref: d1fac08aaf06e42259e7ace6415b64877313ca2c
           fetch-depth: 0
 
       - name: Create self-contained Git bundle
         shell: bash
         run: |
           set -euo pipefail
-          git branch -f experiment-ready-v1 8b4ccab4509e42da7d315e1161085e5a99591181
-          git bundle create ULLM-experiment-ready-v1.bundle experiment-ready-v1
-          git bundle verify ULLM-experiment-ready-v1.bundle
-          sha256sum ULLM-experiment-ready-v1.bundle | tee ULLM-experiment-ready-v1.bundle.sha256
-          printf '%s\n' '8b4ccab4509e42da7d315e1161085e5a99591181' > FROZEN_COMMIT.txt
+          git branch -f experiment-ready-v2 d1fac08aaf06e42259e7ace6415b64877313ca2c
+          git bundle create ULLM-experiment-ready-v2.bundle experiment-ready-v2
+          git bundle verify ULLM-experiment-ready-v2.bundle
+          sha256sum ULLM-experiment-ready-v2.bundle | tee ULLM-experiment-ready-v2.bundle.sha256
+          printf '%s\n' 'd1fac08aaf06e42259e7ace6415b64877313ca2c' > FROZEN_COMMIT.txt
 
       - name: Upload Windows delivery bundle
         uses: actions/upload-artifact@v4
         with:
-          name: ULLM-experiment-ready-v1-windows
+          name: ULLM-experiment-ready-v2-windows
           path: |
-            ULLM-experiment-ready-v1.bundle
-            ULLM-experiment-ready-v1.bundle.sha256
+            ULLM-experiment-ready-v2.bundle
+            ULLM-experiment-ready-v2.bundle.sha256
             FROZEN_COMMIT.txt
           if-no-files-found: error
           retention-days: 7
