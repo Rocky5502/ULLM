@@ -20,21 +20,26 @@ This file is the human-readable project ledger for **The Imperfective Uncertaint
 ### Dataset/provenance hardening
 
 - ImperfectiveNLI is treated as third-party research data and remains outside the repository's MIT software license.
-- Source is now pinned to immutable upstream commit `8845a732d04a0b49e154fbf0db334d48d895b11f` rather than the mutable `main` branch.
+- Source is pinned to immutable upstream commit `8845a732d04a0b49e154fbf0db334d48d895b11f` rather than the mutable `main` branch.
 - Expected upstream Git blob is frozen as `e20112c9de1f8c8ab27a8e2b969699b23dcdb186` with expected byte count 100970 and 400 examples.
 - Dataset validator checks canonical IDs, required fields, exact A/B/C/D counts and labels, and A↔C / B↔D lexical pairing.
 - Local download produces a SHA-256 provenance manifest that is required by preflight.
-- `.gitignore` now explicitly blocks accidental commits of the downloaded benchmark and local dataset manifests.
+- `scripts/preflight.py` now cross-checks committed provenance, immutable source commit/blob, local byte count, local SHA-256, validator manifest, exact 400-item count, and the frozen 15,800-call budget.
+- `.gitignore` explicitly blocks accidental commits of the downloaded benchmark, local provenance/validation manifests, raw/processed result trees, empirical figures, and local evidence snapshots.
+- At the time of provenance review, the upstream GitHub repository exposed no root `LICENSE` file; the project therefore does not infer broader repository rights and records the dataset terms as reported by the source paper/release.
 
 ### Runner/reproducibility hardening
 
 - Every live run stores dataset/config/model/prompt hashes, exact selected IDs, model panel, decoding settings, maximum tokens, label order, git revision, Python/platform metadata, and execution mode.
 - Every response stores requested/returned model IDs, exact message hash, requested seed/max tokens, timestamps, latency, usage metadata, request ID, raw provider response, parsed output, and parser diagnostics.
 - Resume safety rejects manifest drift and can atomically replace failed request/parse rows without duplicate keys.
-- A new `--dry-run` mode constructs the exact request-hash plan without creating an API client or requiring `ZZZ_API_KEY`.
+- `--dry-run` constructs the exact request-hash plan without creating an API client or requiring `ZZZ_API_KEY`.
 - Dry-run manifests are marked `execution_mode=dry_run`, preventing them from being resumed as live paid runs.
 - `scripts/audit_request_plan.py` verifies complete model/example/repeat coverage and checks prompt/temperature/token/label-order consistency without storing raw benchmark text in the request-plan artifact.
-- `scripts/offline_rehearsal.py` now rehearses and audits all six main-study stages, totaling exactly 15,800 planned requests with **zero provider calls**.
+- `scripts/offline_rehearsal.py` rehearses and audits all six main-study stages, totaling exactly 15,800 planned requests with **zero provider calls**.
+- `scripts/environment_snapshot.py` records Git revision/cleanliness, Python/platform state, `pip freeze`, and hashes of scientific inputs while recording only a boolean for API-key presence, never the credential value.
+- `scripts/checksum_run.py` creates an external SHA-256 evidence manifest for every file in a completed raw run directory so post-run backups can be integrity checked.
+- `requirements-frozen.txt` records the exact tested Python 3.11 dependency environment intended for later frozen paid execution; compatibility CI still exercises supported ranges.
 
 ### Analysis pipeline complete before results
 
@@ -48,6 +53,7 @@ This file is the human-readable project ledger for **The Imperfective Uncertaint
 - Publication result figures are generated as vector PDF/SVG.
 - Manuscript result tables are generated from audited CSV artifacts rather than manually copied numbers.
 - Synthetic end-to-end pipeline smoke test exists only for plumbing validation and is explicitly excluded from scientific evidence.
+- Dedicated unit tests now cover zero-API request-plan construction and ensure dry/live execution mode is resume-critical.
 
 ### Manuscript/artifact pipeline
 
@@ -62,8 +68,18 @@ This file is the human-readable project ledger for **The Imperfective Uncertaint
 
 - Core Python CI runs on 3.10, 3.11, and 3.12.
 - Citation integrity, project consistency, unit tests, and zero-API synthetic end-to-end analysis are automated.
-- A frozen dependency snapshot (`requirements-frozen.txt`) records the exact tested Python 3.11 package versions used for the future frozen experiment environment.
-- A separate no-API workflow fetches the immutable dataset, validates its provenance, runs preflight, and rehearses all 15,800 planned main-study calls without contacting the model gateway.
+- `scripts/validate_project.py` now also guards immutable dataset provenance fields, the public/private artifact boundary, frozen dependency pins, progress/runbook presence, the zero-API runner path, and the 15,800-call budget.
+- The dedicated **Dataset and offline rehearsal** workflow fetches the immutable benchmark, validates its provenance/structure, runs preflight, rehearses all 15,800 planned main-study requests without an API key, records a credential-safe CI environment snapshot, and uploads provenance/rehearsal evidence.
+- **First complete Dataset and offline rehearsal workflow run passed successfully on 2026-09-03.** This is a software/protocol readiness result only; it is not an empirical LLM result.
+- Manuscript compilation, citation-key integrity, LaTeX log quality, PDF artifact upload and Overleaf source packaging are automated separately.
+
+### Project coordination / progress recording
+
+- `docs/PROGRESS_LOG.md` is the persistent human-readable ledger.
+- `docs/LOCAL_RUNBOOK.md` is the exact handoff for later local credential-gated execution.
+- `docs/REPRODUCIBILITY.md` documents the evidence chain from immutable source/protocol through live provider records to derived tables/figures.
+- GitHub issue #1 has been rewritten as a phase-based execution board: Phase 0 zero-API work is checked complete; live catalogue/smoke, paid experiment, empirical analysis, manuscript evidence pass, and final IASEAI submission gates remain open.
+- README, data documentation, provenance notes and experiment/paper descriptions are synchronized with the immutable source and offline rehearsal design.
 
 ## Intentionally blocked until local API execution
 
@@ -74,10 +90,11 @@ The following steps cannot be scientifically completed without the user's local 
 3. Audit smoke outputs for routing, schema, parsing, usage metadata and response quality.
 4. Explicitly authorize the 15,800-call frozen main study.
 5. Retry only audited failed requests, without altering scientific settings.
-6. Run the frozen analyses against real provider outputs.
-7. Replace manuscript `TBD` cells/plots through the automated table/figure pipeline.
-8. Write the empirical Results, Discussion and final Conclusion from audited outputs only.
-9. Perform final reviewer-style statistical, artifact, anonymity and IASEAI-format audits.
+6. Create checksum/evidence backups for the real raw runs.
+7. Run the frozen analyses against real provider outputs.
+8. Replace manuscript `TBD` cells/plots through the automated table/figure pipeline.
+9. Write the empirical Results, Discussion and final Conclusion from audited outputs only.
+10. Perform final reviewer-style statistical, artifact, anonymity and IASEAI-format audits.
 
 ## Scientific red lines
 
@@ -88,3 +105,4 @@ The following steps cannot be scientifically completed without the user's local 
 - Do not describe gateway aliases as immutable vendor checkpoints.
 - Do not commit API keys or downloaded third-party benchmark data.
 - Do not manually transcribe manuscript result values when a generated table/figure path exists.
+- Treat a green offline rehearsal as engineering/protocol evidence, never as evidence about model behavior.
