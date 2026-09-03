@@ -70,4 +70,13 @@ This file records execution/provenance facts for the IASEAI'27 study **The Imper
 
 All six scientific live stages are now collected and PASS-audited under the frozen A1 adjudication policy. The planned study contains 15,800 main-study calls before retries. Recovery calls were limited to the eight audited Stage-6 Claude parse failures and the one audited Stage-10 Claude parse failure; no valid response was selectively replaced.
 
+## Analysis handoff status
+
+- First local invocation of `scripts/analyze_frozen.ps1` stopped at analysis gate `[1/12]` before computing any scientific summary.
+- The failure is a Windows PowerShell argument-forwarding defect in the wrapper: the five JSONL paths were serialized as one space-separated path argument to `audit_run.py`.
+- Raw evidence, run manifests, stage audits, completion-budget audits, model-control audits, and checksum seals are unaffected.
+- A repository-side analysis fix was prepared on branch `analysis-ready-v2`; the user's first manual local replacement did not apply because the exact-text guard correctly failed to match the local function block, so the second analysis attempt repeated the same wrapper failure.
+- No paid API call was made by either failed analysis attempt and no empirical table/figure/result was produced from them.
+- Next action is to apply a verified local wrapper replacement (or switch to a validated analysis branch), confirm the helper actually changed before rerunning analysis, then complete the frozen 12-stage analysis pipeline.
+
 No empirical claim should be written from this execution log. Scientific interpretation must come only from the frozen analysis pipeline over the PASS-audited artifacts, followed by the evidence/manuscript gates.
