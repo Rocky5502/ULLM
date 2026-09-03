@@ -46,6 +46,10 @@ def audit(run_dir: Path) -> dict[str, Any]:
         errors.append("dry-run manifest schema_version must be >= 3")
 
     models = [str(x) for x in manifest.get("models", [])]
+    model_request_overrides = manifest.get("model_request_overrides", {}) or {}
+    if not isinstance(model_request_overrides, dict):
+        errors.append("manifest model_request_overrides must be a mapping")
+        model_request_overrides = {}
     selected_ids = {str(x) for x in manifest.get("selected_ids", [])}
     selected_n = int(manifest.get("selected_n", -1))
     repeats = int(manifest.get("samples_per_item", -1))
@@ -85,6 +89,9 @@ def audit(run_dir: Path) -> dict[str, Any]:
             errors.append(f"row {i}: temperature drift")
         if int(row.get("max_tokens_requested", -1)) != int(manifest.get("max_tokens", -2)):
             errors.append(f"row {i}: max_tokens drift")
+        expected_override = model_request_overrides.get(model, {})
+        if row.get("request_overrides", {}) != expected_override:
+            errors.append(f"row {i}: model request override drift")
         if row.get("prompt_type") != manifest.get("prompt_type"):
             errors.append(f"row {i}: prompt_type drift")
         if row.get("prompt_sha256") != manifest.get("prompt_sha256"):
