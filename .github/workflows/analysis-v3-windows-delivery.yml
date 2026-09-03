@@ -1,0 +1,36 @@
+name: Analysis v3 Windows delivery
+
+on:
+  push:
+    branches:
+      - analysis-delivery-v3
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout logistics branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build exact analysis-ready-v3 Git bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin analysis-ready-v3:refs/heads/analysis-ready-v3
+          git bundle create ULLM-analysis-ready-v3.bundle refs/heads/analysis-ready-v3
+          printf '%s\n' 'ebc0ebe56350dc3822f690142bc5de1cf5ad2c2a' > FROZEN_COMMIT.txt
+          sha256sum ULLM-analysis-ready-v3.bundle > ULLM-analysis-ready-v3.bundle.sha256
+
+      - name: Upload Windows delivery artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ULLM-analysis-ready-v3-windows
+          path: |
+            ULLM-analysis-ready-v3.bundle
+            ULLM-analysis-ready-v3.bundle.sha256
+            FROZEN_COMMIT.txt
+          if-no-files-found: error
+          retention-days: 7
