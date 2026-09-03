@@ -7,14 +7,24 @@ output_dir: results/raw
 max_concurrency: 6
 request_timeout_s: 120
 max_retries: 6
-# v3 freeze: v1 at 220 tokens truncated DeepSeek/Gemini; v2 at 1024 fixed Gemini
-# and reduced DeepSeek parse failures from 12/20 to 3/20, with all three remaining
-# DeepSeek failures ending at finish_reason=length. Raise only the completion ceiling
-# before any main-study result exists. This is a maximum, not a requested output
-# length: routes that stop normally are not forced to consume the budget.
-# Prompt, decoding temperatures, dataset, model panel, RQs, metrics, thresholds, and
-# all other scientific settings remain unchanged. A fresh smoke must pass before RUN.
+# v3 compatibility ceiling retained. Earlier 220/1024-token ceilings truncated
+# reasoning-heavy DeepSeek responses; 4096 remains a conservative global ceiling.
 max_tokens: 4096
+
+# v4 pre-main compatibility/control freeze. DeepSeek-V4-Pro's supported thinking mode
+# is enabled by default, but the provider documents that temperature is ignored in
+# thinking mode. That would invalidate the preregistered K=5 temperature=0.7 sampling
+# condition used by RQ2. Thinking mode also caused the two remaining v3 smoke budget
+# exhaustions at 4096 tokens. Therefore only this documented inference-mode toggle is
+# fixed before any main-study result: DeepSeek runs in non-thinking mode so the same
+# deterministic/sampling temperature controls are meaningful across the panel.
+# The model ID, prompts, RQs, hypotheses, dataset, K, metrics, thresholds, and all
+# statistical procedures are unchanged. The live audit must verify that the gateway
+# actually honored this override before the main study may begin.
+model_request_overrides:
+  deepseek-v4-pro:
+    thinking:
+      type: disabled
 
 # The scientific primary condition is intentionally neutral: it does not teach the
 # telicity/imperfective rule whose recognition we are trying to measure.
