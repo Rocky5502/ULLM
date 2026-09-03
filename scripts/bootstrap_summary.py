@@ -24,6 +24,7 @@ from ullm.metrics import (
 )
 
 RecordMetric = Callable[[list[dict]], float]
+LABEL_ORDER = ("True", "False", "Unknown")
 
 
 def load_valid(path: Path) -> list[dict]:
@@ -47,8 +48,13 @@ def arrays(records: list[dict]) -> tuple[list[str], list[str], list[dict[str, fl
     return gold, pred, probs, groups
 
 
+def probability_argmax(prob: dict[str, float]) -> str:
+    return max(LABEL_ORDER, key=lambda k: float(prob[k]))
+
+
 def metric_bundle(records: list[dict], n_bins: int) -> dict[str, float]:
     gold, pred, probs, groups = arrays(records)
+    prob_top_pred = [probability_argmax(pr) for pr in probs]
     ga = group_accuracy(groups, gold, pred)
     cwe = classwise_ece(gold, probs, n_bins=n_bins)
     return {
@@ -61,7 +67,7 @@ def metric_bundle(records: list[dict], n_bins: int) -> dict[str, float]:
         "SUR": semantic_uncertainty_recognition(groups, probs),
         "TOR@0.80": teleological_overconfidence_rate(groups, probs, 0.80),
         "ADG": ambiguity_discrimination_gap(groups, probs),
-        "ECE": ece(gold, pred, probs, n_bins=n_bins),
+        "ECE": ece(gold, prob_top_pred, probs, n_bins=n_bins),
         "ECE_Unknown": cwe["Unknown"],
         "Brier": multiclass_brier(gold, probs),
         "NLL": nll(gold, probs),
