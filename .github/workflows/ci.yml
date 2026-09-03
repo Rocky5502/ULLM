@@ -54,6 +54,9 @@ jobs:
             $errors | Format-List
             exit 1
           }
+      - name: Anonymous artifact identity scan
+        if: matrix.python-version == '3.11'
+        run: python scripts/package_anonymous_artifact.py --check-only
       - name: Zero-API end-to-end analysis smoke
         if: matrix.python-version == '3.11'
         env:
