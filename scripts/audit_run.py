@@ -54,6 +54,12 @@ def audit_file(
         if r.get("prediction")
         and float(r["prediction"].get("normalization_delta", 0.0)) > 0.02
     ]
+    empty_reasons = [
+        r
+        for r in rows
+        if r.get("prediction")
+        and not str(r["prediction"].get("reason_short", "")).strip()
+    ]
 
     requested = sorted({str(r.get("model_requested")) for r in rows})
     returned = sorted(
@@ -109,9 +115,14 @@ def audit_file(
             f"label/probability argmax contract violations: {len(argmax_bad)}"
         )
     if norm_bad:
-        warnings.append(
+        # Parser normalization exists only to absorb ordinary decimal rounding. A
+        # larger deviation means the model did not satisfy the declared probability
+        # contract and must not silently become scientific data after renormalization.
+        failures.append(
             f"raw probability sums >0.02 away from one: {len(norm_bad)}"
         )
+    if empty_reasons:
+        failures.append(f"missing required one-sentence reason_short: {len(empty_reasons)}")
     if len(requested) != 1:
         failures.append(f"requested model IDs per file must be exactly one: {requested}")
     if len(returned) > 1:
@@ -140,6 +151,10 @@ def audit_file(
         )
 
     if manifest is not None:
+        if manifest.get("execution_mode") != "live":
+            failures.append(
+                f"run audit requires execution_mode=live, found {manifest.get('execution_mode')!r}"
+            )
         expected_ids = {str(x) for x in manifest.get("selected_ids", [])}
         observed_ids = set(counts_by_id)
         missing_ids = sorted(expected_ids - observed_ids)
@@ -183,6 +198,15 @@ def audit_file(
     usage_present = sum(bool(r.get("usage")) for r in rows)
     latency_present = sum(r.get("latency_s") is not None for r in rows)
     request_id_present = sum(bool(r.get("request_id")) for r in rows)
+    http_status_present = sum(r.get("http_status") is not None for r in rows)
+    attempts_present = sum(r.get("attempts_used") is not None for r in rows)
+    retry_rows = [
+        r for r in rows if isinstance(r.get("attempts_used"), int) and r["attempts_used"] > 1
+    ]
+    non_200 = [
+        r for r in rows if r.get("http_status") is not None and int(r["http_status"]) != 200
+    ]
+
     if rows and usage_present < len(rows):
         warnings.append(
             f"usage metadata missing on {len(rows) - usage_present}/{len(rows)} rows"
@@ -195,6 +219,18 @@ def audit_file(
         warnings.append(
             f"request ID missing on {len(rows) - request_id_present}/{len(rows)} rows"
         )
+    if rows and attempts_present < len(rows):
+        warnings.append(
+            f"attempt-count metadata missing on {len(rows) - attempts_present}/{len(rows)} rows"
+        )
+    if rows and http_status_present < len(rows):
+        warnings.append(
+            f"HTTP-status metadata missing on {len(rows) - http_status_present}/{len(rows)} rows"
+        )
+    if retry_rows:
+        warnings.append(f"successful rows requiring >1 HTTP attempt: {len(retry_rows)}")
+    if non_200:
+        failures.append(f"successful records with non-200 final HTTP status: {len(non_200)}")
 
     return {
         "file": str(path),
@@ -209,7 +245,14 @@ def audit_file(
         "request_errors": len(request_errors),
         "parse_errors": len(parse_errors),
         "argmax_inconsistencies": len(argmax_bad),
-        "normalization_warnings": len(norm_bad),
+        "normalization_contract_failures": len(norm_bad),
+        "empty_reason_failures": len(empty_reasons),
+        "retry_rows": len(retry_rows),
+        "usage_present": usage_present,
+        "latency_present": latency_present,
+        "request_id_present": request_id_present,
+        "http_status_present": http_status_present,
+        "attempts_present": attempts_present,
         "warnings": warnings,
         "failures": failures,
         "status": "PASS" if not failures else "FAIL",
@@ -229,6 +272,10 @@ def main() -> None:
     global_failures: list[str] = []
     if args.manifest:
         manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+        if manifest.get("execution_mode") != "live":
+            global_failures.append(
+                f"manifest execution_mode must be live for scientific analysis, found {manifest.get('execution_mode')!r}"
+            )
         dataset_path = Path(str(manifest.get("dataset_path", "")))
         if not dataset_path.exists():
             global_failures.append(f"manifest dataset path missing locally: {dataset_path}")
