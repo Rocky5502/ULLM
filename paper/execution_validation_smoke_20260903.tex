@@ -1,35 +1,37 @@
-% Execution-validation record generated from the 2026-09-03 frozen 100-call smoke.
+% Execution-validation record generated from the 2026-09-03 frozen smoke sequence.
 % IMPORTANT: this file is an engineering/audit record, NOT main-study empirical evidence.
 % It must not be cited as RQ1/RQ2/RQ3 evidence. The manuscript Results section remains TBD
 % until all frozen main-study runs pass the manifest-aware audit.
 
 \paragraph{Execution-validation record (2026-09-03; non-evidentiary smoke).}
-Immediately before the smoke run, two consecutive gateway-catalogue snapshots exposed all five predeclared routing identifiers---\texttt{gpt-5.6-sol}, \texttt{claude-sonnet-5}, \texttt{deepseek-v4-pro}, \texttt{qwen3.8-max}, and \texttt{gemini-3.7-flash}---within a catalogue of 842 entries. Both snapshots had identical catalogue SHA-256 \texttt{904b9ec7a7b04d7e9e709558d58d2cfbffda0ebf9cdc1390b0543a6fd7b7157a}; no API credential was recorded.
+Immediately before the smoke sequence, repeated gateway-catalogue snapshots exposed all five predeclared routing identifiers---\texttt{gpt-5.6-sol}, \texttt{claude-sonnet-5}, \texttt{deepseek-v4-pro}, \texttt{qwen3.8-max}, and \texttt{gemini-3.7-flash}---within a catalogue of 842 entries. The snapshots had identical catalogue SHA-256 \texttt{904b9ec7a7b04d7e9e709558d58d2cfbffda0ebf9cdc1390b0543a6fd7b7157a}; no API credential was recorded.
 
-A balanced 20-example-per-model deterministic neutral smoke then issued 100 paid completion calls. Request failures were zero for all five routed endpoints. The hard audit nevertheless failed because structured-output parsing failed for 12/20 DeepSeek responses and 6/20 Gemini responses. Claude, GPT, and Qwen each produced 20/20 parse-valid records. Because the smoke audit failed, no smoke metric is promoted into the scientific Results section and the 15,800-call main study remains blocked pending a clean replacement smoke.
+The first balanced 20-example-per-model deterministic neutral smoke issued 100 paid completion calls. Request failures were zero for all five routed endpoints. The hard audit nevertheless failed because structured-output parsing failed for 12/20 DeepSeek responses and 6/20 Gemini responses. Claude, GPT, and Qwen each produced 20/20 parse-valid records. Because the smoke audit failed, no smoke metric was promoted into the scientific Results section and the 15,800-call main study remained blocked.
 
 \begin{table}[t]
 \centering
 \small
 \begin{tabular}{@{}lrrr@{}}
 \toprule
-Gateway route & Valid & Parse failures & Parse-failure rate \\
+Gateway route & V1 valid & V1 parse fail & V2 valid \\
 \midrule
-\texttt{gpt-5.6-sol} & 20/20 & 0 & 0.00 \\
-\texttt{claude-sonnet-5} & 20/20 & 0 & 0.00 \\
-\texttt{deepseek-v4-pro} & 8/20 & 12 & 0.60 \\
-\texttt{qwen3.8-max} & 20/20 & 0 & 0.00 \\
-\texttt{gemini-3.7-flash} & 14/20 & 6 & 0.30 \\
+\texttt{gpt-5.6-sol} & 20/20 & 0 & 20/20 \\
+\texttt{claude-sonnet-5} & 20/20 & 0 & 20/20 \\
+\texttt{deepseek-v4-pro} & 8/20 & 12 & 17/20 \\
+\texttt{qwen3.8-max} & 20/20 & 0 & 20/20 \\
+\texttt{gemini-3.7-flash} & 14/20 & 6 & 20/20 \\
 \bottomrule
 \end{tabular}
-\caption{Non-evidentiary smoke-test structured-output validity. These counts are an execution gate, not an RQ result.}
+\caption{Non-evidentiary smoke-test structured-output validity. V1 used a 220-token ceiling; V2 used 1024. These counts are execution gates, not RQ results.}
 \label{tab:smoke-execution-validation}
 \end{table}
 
 \paragraph{Failure-shape diagnosis.}
-Inspection of preserved raw responses established completion-budget exhaustion rather than a general semantic-label parser incompatibility. Every failed DeepSeek response had \texttt{finish\_reason=length} and exactly 220 completion tokens. Eleven of those responses had empty final \texttt{content} while exposing long \texttt{reasoning\_content}; the remaining response emitted only a JSON prefix before the budget ended. For Gemini, all six failed message bodies were visibly incomplete JSON/code-fence prefixes. Four reported \texttt{finish\_reason=length}; two reported \texttt{finish\_reason=stop} despite still being incomplete, so provider finish metadata alone is not treated as evidence that a structured response is complete. All six reported 216 completion tokens in the preserved usage metadata.
+Inspection of preserved V1 raw responses established completion-budget exhaustion rather than a general semantic-label parser incompatibility. Every failed DeepSeek response had \texttt{finish\_reason=length} and exactly 220 completion tokens. Eleven had empty final \texttt{content} while exposing long \texttt{reasoning\_content}; the remaining response emitted only a JSON prefix before the budget ended. For Gemini, all six failed message bodies were visibly incomplete JSON/code-fence prefixes. Four reported \texttt{finish\_reason=length}; two reported \texttt{finish\_reason=stop} despite still being incomplete.
 
-\paragraph{Pre-main compatibility freeze.}
-Before any main-study result existed, we created \texttt{experiment-ready-v2} and changed exactly one execution setting: the maximum completion budget from 220 to 1024 tokens. The neutral prompt, RQs, hypotheses, model routes, dataset, temperatures, sampling $K$, robustness subsets, metrics, thresholds, and statistical protocol remain unchanged. The parser is deliberately not relaxed to reconstruct incomplete JSON. A fresh 100-call smoke under v2 must pass for all five routes before the 15,800-call main study can begin. The original \texttt{experiment-ready-v1} branch remains immutable for provenance.
+\paragraph{V2 confirmation and final pre-main compatibility freeze.}
+Before any main-study result existed, \texttt{experiment-ready-v2} changed exactly one execution setting: the maximum completion budget from 220 to 1024 tokens. The complete 15,800-request offline plan was re-frozen and re-audited with zero completion calls. A fresh 100-call V2 smoke then made Gemini fully parse-valid (20/20) and improved DeepSeek from 8/20 to 17/20. The only three remaining DeepSeek failures were \texttt{A\_015}, \texttt{D\_007}, and \texttt{A\_036}; all ended with \texttt{finish\_reason=length}, confirming that the remaining blocker was still the completion ceiling rather than the parser. GPT, Claude, Qwen, and Gemini were all 20/20 parse-valid under V2.
 
-For traceability only, the v1 smoke summarizer reported the following valid-record-only descriptive values: Claude Group-C accuracy 0.8, SUR 0.574, TOR@0.80 0.2, ADG 0.483333; DeepSeek Group-C accuracy 1.0, SUR 0.700, TOR@0.80 0.0, ADG 0.695714 (only 8 parse-valid records overall); Gemini Group-C accuracy 1.0, SUR 0.725, TOR@0.80 0.0, ADG 0.713000 (only 14 parse-valid records overall); GPT Group-C accuracy 1.0, SUR 0.870, TOR@0.80 0.0, ADG 0.794067; and Qwen Group-C accuracy 0.8, SUR 0.406, TOR@0.80 0.2, ADG 0.356000. These values are deliberately quarantined from inference because the smoke subset is small and two endpoints failed the parser gate.
+We therefore created \texttt{experiment-ready-v3} before any main-study result and raised only the maximum completion ceiling from 1024 to 4096 tokens. This is a ceiling rather than a requested response length: routes that stop normally are not forced to consume it. The neutral prompt, RQs, hypotheses, model routes, dataset, temperatures, sampling $K$, robustness subsets, metrics, thresholds, and statistical protocol remain unchanged. The parser is still not relaxed to reconstruct incomplete JSON. In addition to the manifest-aware audit, V3 adds a hard completion-budget audit that rejects any preserved response with \texttt{finish\_reason=length}, even if a partial response happened to parse. A fresh 100-call V3 smoke must pass both gates for all five routes before the 15,800-call main study can begin. V1 and V2 remain immutable provenance checkpoints.
+
+For traceability only, the V1 smoke summarizer reported valid-record-only descriptive values. These values remain quarantined from inference because the smoke subset is small and the V1 audit failed; no smoke number is used as RQ1/RQ2/RQ3 evidence.
