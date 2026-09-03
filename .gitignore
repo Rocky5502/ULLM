@@ -1,14 +1,38 @@
 .env
+.env.*
+!.env.example
 .venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-results/raw/*.jsonl
-results/processed/*.csv
+
+# Third-party benchmark is fetched locally and must not be accidentally relicensed/committed.
+data/imperfectiveNLI.json
+data/MANIFEST.local.json
+data/dataset_manifest.json
+
+# Frozen API artifacts can be large and may contain provider-returned text.
+results/raw/**
+results/processed/**
+results/figures/**
+!results/raw/.gitkeep
+!results/processed/.gitkeep
+!results/figures/.gitkeep
+!results/README.md
+
+# Local pre-API rehearsal/freeze snapshots.
+artifacts/local/**
+
+# LaTeX build products.
 paper/*.aux
 paper/*.bbl
 paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
 paper/*.log
 paper/*.out
+paper/*.pdf
 paper/*.synctex.gz
+
 .DS_Store
+Thumbs.db
