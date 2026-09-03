@@ -294,6 +294,8 @@ async def run_model(
                         "usage": result.usage,
                         "latency_s": result.latency_s,
                         "request_id": result.request_id,
+                        "http_status": result.http_status,
+                        "attempts_used": result.attempts_used,
                         "raw_response": result.raw,
                     }
                 )
@@ -310,6 +312,8 @@ async def run_model(
                         "usage": None,
                         "latency_s": None,
                         "request_id": None,
+                        "http_status": None,
+                        "attempts_used": None,
                         "raw_response": None,
                     }
                 )
