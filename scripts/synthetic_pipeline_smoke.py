@@ -213,7 +213,7 @@ def main() -> None:
         run("scripts/analyze_selective.py", str(det), "--sampling", str(processed / "sampling.csv"), "--out", str(processed / "selective.csv"))
         run("scripts/analyze_recheck.py", "--base", str(det), "--verifier", str(verifier_path), "--out", str(processed / "recheck.csv"))
         run("scripts/make_result_figures.py", "--summary", str(processed / "summary.csv"), "--sampling", str(processed / "sampling.csv"), "--ranking", str(processed / "ranking.csv"), "--selective", str(processed / "selective.csv"), "--pairwise", str(processed / "pairwise.csv"), "--recheck", str(processed / "recheck.csv"), "--outdir", str(figures))
-        run("scripts/make_paper_tables.py", "--summary", str(processed / "summary.csv"), "--bootstrap", str(processed / "bootstrap.csv"), "--ranking", str(processed / "ranking.csv"), "--recheck", str(processed / "recheck.csv"), "--outdir", str(tables))
+        run("scripts/make_paper_tables.py", "--summary", str(processed / "summary.csv"), "--bootstrap", str(processed / "bootstrap.csv"), "--ranking", str(processed / "ranking.csv"), "--ranking-bootstrap", str(processed / "ranking_bootstrap.csv"), "--recheck", str(processed / "recheck.csv"), "--outdir", str(tables))
 
         expected = [
             processed / "summary.csv",
@@ -226,7 +226,9 @@ def main() -> None:
             processed / "recheck.csv",
             figures / "rq1_group_c_uncertainty.pdf",
             tables / "rq1_table.tex",
+            tables / "rq1_ci_table.tex",
             tables / "rq2_table.tex",
+            tables / "rq2_ci_table.tex",
             tables / "rq3_table.tex",
         ]
         missing = [str(p) for p in expected if not p.exists()]
