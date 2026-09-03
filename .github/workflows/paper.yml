@@ -31,9 +31,19 @@ jobs:
           args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode
       - name: Audit final LaTeX log quality
         run: python scripts/check_latex_log.py paper/main.log
+      - name: Package exact committed Overleaf source
+        run: |
+          git archive --format=zip --output=ULLM_IASEAI27_Overleaf.zip HEAD:paper
+          unzip -l ULLM_IASEAI27_Overleaf.zip
       - name: Upload compiled manuscript
         uses: actions/upload-artifact@v4
         with:
           name: ullm-paper-pdf
           path: paper/main.pdf
+          if-no-files-found: error
+      - name: Upload Overleaf source package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ullm-overleaf-source
+          path: ULLM_IASEAI27_Overleaf.zip
           if-no-files-found: error
