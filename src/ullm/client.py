@@ -18,6 +18,8 @@ class ChatResult:
     raw: dict[str, Any]
     latency_s: float
     request_id: str | None
+    http_status: int
+    attempts_used: int
 
 
 class OpenAICompatibleClient:
@@ -34,7 +36,7 @@ class OpenAICompatibleClient:
         base_url: str | None = None,
         timeout_s: float = 120,
         max_retries: int = 5,
-        user_agent: str = "ULLM-research/0.2",
+        user_agent: str = "ULLM-research/0.3",
     ) -> None:
         self.api_key = api_key or os.getenv("ZZZ_API_KEY")
         self.base_url = (
@@ -106,11 +108,17 @@ class OpenAICompatibleClient:
                     raw=data,
                     latency_s=latency_s,
                     request_id=request_id,
+                    http_status=response.status_code,
+                    attempts_used=attempt + 1,
                 )
             except (httpx.HTTPError, KeyError, ValueError) as exc:
                 if attempt >= self.max_retries:
+                    status = None
+                    if isinstance(exc, httpx.HTTPStatusError) and exc.response is not None:
+                        status = exc.response.status_code
                     raise RuntimeError(
                         f"Request failed for {model} after {self.max_retries + 1} attempts"
+                        + (f"; last_http_status={status}" if status is not None else "")
                     ) from exc
                 # Exponential backoff + jitter; respect Retry-After when present.
                 retry_after = None
