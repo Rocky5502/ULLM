@@ -11,27 +11,28 @@ The first balanced 20-example-per-model deterministic neutral smoke issued 100 p
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{@{}lrrr@{}}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-Gateway route & V1 valid & V1 parse fail & V2 valid \\
+Gateway route & V1 valid & V2 valid & V3 valid & V4 valid \\
 \midrule
-\texttt{gpt-5.6-sol} & 20/20 & 0 & 20/20 \\
-\texttt{claude-sonnet-5} & 20/20 & 0 & 20/20 \\
-\texttt{deepseek-v4-pro} & 8/20 & 12 & 17/20 \\
-\texttt{qwen3.8-max} & 20/20 & 0 & 20/20 \\
-\texttt{gemini-3.7-flash} & 14/20 & 6 & 20/20 \\
+\texttt{gpt-5.6-sol} & 20/20 & 20/20 & 20/20 & 20/20 \\
+\texttt{claude-sonnet-5} & 20/20 & 20/20 & 20/20 & 20/20 \\
+\texttt{deepseek-v4-pro} & 8/20 & 17/20 & 18/20 & 20/20 \\
+\texttt{qwen3.8-max} & 20/20 & 20/20 & 20/20 & 20/20 \\
+\texttt{gemini-3.7-flash} & 14/20 & 20/20 & 20/20 & 20/20 \\
 \bottomrule
 \end{tabular}
-\caption{Non-evidentiary smoke-test structured-output validity. V1 used a 220-token ceiling; V2 used 1024. These counts are execution gates, not RQ results.}
+\caption{Non-evidentiary smoke-test structured-output validity across compatibility freezes. These counts are execution gates, not RQ results.}
 \label{tab:smoke-execution-validation}
 \end{table}
 
 \paragraph{Failure-shape diagnosis.}
 Inspection of preserved V1 raw responses established completion-budget exhaustion rather than a general semantic-label parser incompatibility. Every failed DeepSeek response had \texttt{finish\_reason=length} and exactly 220 completion tokens. Eleven had empty final \texttt{content} while exposing long \texttt{reasoning\_content}; the remaining response emitted only a JSON prefix before the budget ended. For Gemini, all six failed message bodies were visibly incomplete JSON/code-fence prefixes. Four reported \texttt{finish\_reason=length}; two reported \texttt{finish\_reason=stop} despite still being incomplete.
 
-\paragraph{V2 confirmation and final pre-main compatibility freeze.}
-Before any main-study result existed, \texttt{experiment-ready-v2} changed exactly one execution setting: the maximum completion budget from 220 to 1024 tokens. The complete 15,800-request offline plan was re-frozen and re-audited with zero completion calls. A fresh 100-call V2 smoke then made Gemini fully parse-valid (20/20) and improved DeepSeek from 8/20 to 17/20. The only three remaining DeepSeek failures were \texttt{A\_015}, \texttt{D\_007}, and \texttt{A\_036}; all ended with \texttt{finish\_reason=length}, confirming that the remaining blocker was still the completion ceiling rather than the parser. GPT, Claude, Qwen, and Gemini were all 20/20 parse-valid under V2.
+\paragraph{V2--V3 compatibility checks.}
+Before any main-study result existed, \texttt{experiment-ready-v2} changed exactly one execution setting: the maximum completion budget from 220 to 1024 tokens. The complete 15,800-request offline plan was re-frozen and re-audited with zero completion calls. A fresh 100-call V2 smoke then made Gemini fully parse-valid (20/20) and improved DeepSeek from 8/20 to 17/20. The only three remaining DeepSeek failures were \texttt{A\_015}, \texttt{D\_007}, and \texttt{A\_036}; all ended with \texttt{finish\_reason=length}. \texttt{experiment-ready-v3} therefore raised only the completion ceiling from 1024 to 4096 tokens and added a hard completion-budget audit. V3 improved DeepSeek to 18/20, but \texttt{A\_015} and \texttt{D\_007} still exhausted the full 4096-token ceiling and failed parsing. GPT, Claude, Qwen, and Gemini remained 20/20 parse-valid.
 
-We therefore created \texttt{experiment-ready-v3} before any main-study result and raised only the maximum completion ceiling from 1024 to 4096 tokens. This is a ceiling rather than a requested response length: routes that stop normally are not forced to consume it. The neutral prompt, RQs, hypotheses, model routes, dataset, temperatures, sampling $K$, robustness subsets, metrics, thresholds, and statistical protocol remain unchanged. The parser is still not relaxed to reconstruct incomplete JSON. In addition to the manifest-aware audit, V3 adds a hard completion-budget audit that rejects any preserved response with \texttt{finish\_reason=length}, even if a partial response happened to parse. A fresh 100-call V3 smoke must pass both gates for all five routes before the 15,800-call main study can begin. V1 and V2 remain immutable provenance checkpoints.
+\paragraph{V4 final compatibility gate.}
+Because repeated ceiling increases did not eliminate DeepSeek reasoning-budget exhaustion and would not by themselves guarantee the intended temperature-controlled repeated-sampling condition, \texttt{experiment-ready-v4} froze a model-specific request override for \texttt{deepseek-v4-pro} that disables gateway thinking mode while keeping the 4096-token ceiling and every scientific setting unchanged. A fresh balanced 100-call V4 smoke passed the manifest-aware run audit for all five routes: each model produced 20/20 valid records, with zero request failures and zero parse failures. The independent completion-budget audit checked all 100 preserved responses and found zero \texttt{finish\_reason=length} rows. A dedicated model-control audit also reported zero override mismatches and zero forbidden DeepSeek reasoning-content violations. The V4 smoke outputs were integrity-sealed with a SHA-256 run manifest. This establishes execution compatibility only; the smoke summary remains quarantined from RQ1/RQ2/RQ3 inference.
 
-For traceability only, the V1 smoke summarizer reported valid-record-only descriptive values. These values remain quarantined from inference because the smoke subset is small and the V1 audit failed; no smoke number is used as RQ1/RQ2/RQ3 evidence.
+The neutral prompt, RQs, hypotheses, model routes, dataset, temperatures, sampling $K$, robustness subsets, thresholds, metrics, and statistical protocol were not changed by the V4 compatibility fix. V1--V4 remain provenance checkpoints; no failed smoke value is promoted into the manuscript Results section.
