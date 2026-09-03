@@ -149,6 +149,7 @@ def _critical_manifest_fields(manifest: dict[str, Any]) -> dict[str, Any]:
         "models_sha256",
         "git_commit",
         "max_tokens",
+        "model_request_overrides",
     )
     return {key: manifest.get(key) for key in keys}
 
@@ -171,6 +172,32 @@ def write_or_validate_manifest(path: Path, candidate: dict[str, Any], *, resume:
     path.write_text(json.dumps(candidate, indent=2), encoding="utf-8")
 
 
+def _validate_model_request_overrides(
+    config: dict[str, Any], models: list[str]
+) -> dict[str, dict[str, Any]]:
+    raw = config.get("model_request_overrides", {}) or {}
+    if not isinstance(raw, dict):
+        raise SystemExit("model_request_overrides must be a mapping keyed by model ID")
+    unknown = sorted(set(str(k) for k in raw) - set(models))
+    if unknown:
+        raise SystemExit(f"model_request_overrides contains unknown model IDs: {unknown}")
+
+    forbidden = {"model", "messages", "temperature", "max_tokens", "seed"}
+    out: dict[str, dict[str, Any]] = {}
+    for model in models:
+        value = raw.get(model, {}) or {}
+        if not isinstance(value, dict):
+            raise SystemExit(f"model_request_overrides[{model!r}] must be a mapping")
+        collisions = sorted(forbidden & set(value))
+        if collisions:
+            raise SystemExit(
+                f"model_request_overrides[{model!r}] may not replace common controls: {collisions}"
+            )
+        # JSON round-trip gives an immutable, serializable copy for manifests/records.
+        out[model] = json.loads(json.dumps(value, ensure_ascii=False, sort_keys=True))
+    return out
+
+
 def write_request_plan(
     path: Path,
     *,
@@ -182,6 +209,7 @@ def write_request_plan(
     max_tokens: int,
     prompt_type: str,
     label_order: tuple[str, str, str],
+    model_request_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> int:
     """Materialize the exact planned request hashes without contacting any provider.
 
@@ -190,9 +218,11 @@ def write_request_plan(
     and per-example request construction before a paid run.
     """
     system_prompt = get_system_prompt(prompt_type)
+    overrides = model_request_overrides or {model: {} for model in models}
     count = 0
     with path.open("w", encoding="utf-8", newline="\n") as f:
         for model in models:
+            request_overrides = overrides.get(model, {})
             for ex in examples:
                 messages = [
                     {"role": "system", "content": system_prompt},
@@ -208,6 +238,7 @@ def write_request_plan(
                         "seed_requested": seed + rep,
                         "temperature": temperature,
                         "max_tokens_requested": max_tokens,
+                        "request_overrides": request_overrides,
                         "prompt_type": prompt_type,
                         "prompt_sha256": text_sha256(system_prompt),
                         "messages_sha256": message_hash,
@@ -229,6 +260,7 @@ async def run_model(
     concurrency: int,
     seed: int,
     max_tokens: int,
+    request_overrides: dict[str, Any],
     prompt_type: str,
     label_order: tuple[str, str, str],
     resume: bool,
@@ -262,6 +294,7 @@ async def run_model(
                 "model_requested": model,
                 "temperature": temperature,
                 "max_tokens_requested": max_tokens,
+                "request_overrides": request_overrides,
                 "seed_requested": requested_seed,
                 "repeat": rep,
                 "prompt_type": prompt_type,
@@ -277,6 +310,7 @@ async def run_model(
                     temperature=temperature,
                     max_tokens=max_tokens,
                     seed=requested_seed,
+                    request_overrides=request_overrides,
                 )
                 try:
                     parsed = parse_prediction(result.text)
@@ -332,11 +366,15 @@ async def main_async(args: argparse.Namespace) -> None:
     models_path = Path(args.models)
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     model_cfg = yaml.safe_load(models_path.read_text(encoding="utf-8"))
-    models = [m["id"] for m in model_cfg["models"]]
+    configured_models = [m["id"] for m in model_cfg["models"]]
+    all_model_request_overrides = _validate_model_request_overrides(config, configured_models)
+
+    models = list(configured_models)
     if args.model:
         models = [m for m in models if m in args.model]
     if not models:
         raise SystemExit("No configured models matched --model.")
+    model_request_overrides = {m: all_model_request_overrides[m] for m in models}
 
     input_path = Path(config["input_file"])
     examples_all = load_examples(input_path)
@@ -359,7 +397,7 @@ async def main_async(args: argparse.Namespace) -> None:
     system_prompt = get_system_prompt(prompt_type)
     mode = config[args.mode]
     manifest = {
-        "schema_version": 3,
+        "schema_version": 4,
         "run_id": run_id,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "execution_mode": "dry_run" if args.dry_run else "live",
@@ -373,6 +411,7 @@ async def main_async(args: argparse.Namespace) -> None:
         "temperature": float(mode["temperature"]),
         "samples_per_item": int(mode["samples_per_item"]),
         "max_tokens": max_tokens,
+        "model_request_overrides": model_request_overrides,
         "prompt_type": prompt_type,
         "prompt_sha256": text_sha256(system_prompt),
         "label_order": list(label_order),
@@ -397,6 +436,7 @@ async def main_async(args: argparse.Namespace) -> None:
             max_tokens=max_tokens,
             prompt_type=prompt_type,
             label_order=label_order,  # type: ignore[arg-type]
+            model_request_overrides=model_request_overrides,
         )
         expected = len(models) * len(examples) * int(mode["samples_per_item"])
         if planned != expected:
@@ -427,6 +467,7 @@ async def main_async(args: argparse.Namespace) -> None:
                 concurrency=int(config["max_concurrency"]),
                 seed=int(config["seed"]),
                 max_tokens=max_tokens,
+                request_overrides=model_request_overrides[model],
                 prompt_type=prompt_type,
                 label_order=label_order,  # type: ignore[arg-type]
                 resume=args.resume,
