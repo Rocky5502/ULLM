@@ -1,12 +1,19 @@
 {
   "name": "ImperfectiveNLI",
   "source_repository": "https://github.com/boleima/ImperfectiveParadox",
+  "source_commit": "8845a732d04a0b49e154fbf0db334d48d895b11f",
   "source_path": "data/imperfectiveNLI.json",
-  "source_raw_url": "https://raw.githubusercontent.com/boleima/ImperfectiveParadox/main/data/imperfectiveNLI.json",
+  "source_raw_url": "https://raw.githubusercontent.com/boleima/ImperfectiveParadox/8845a732d04a0b49e154fbf0db334d48d895b11f/data/imperfectiveNLI.json",
   "upstream_git_blob_sha1": "e20112c9de1f8c8ab27a8e2b969699b23dcdb186",
   "expected_bytes": 100970,
   "expected_examples": 400,
-  "expected_group_counts": {"A": 100, "B": 100, "C": 100, "D": 100},
+  "expected_group_counts": {
+    "A": 100,
+    "B": 100,
+    "C": 100,
+    "D": 100
+  },
   "license_as_reported_by_source_paper": "CC BY-NC 4.0",
-  "note": "Run scripts/fetch_imperfective_nli.py. The downloader verifies the exact upstream Git blob SHA-1 and writes a local SHA-256 manifest."
+  "license_note": "The upstream GitHub repository does not currently expose a root LICENSE file. This repository therefore records the dataset terms exactly as reported by the source paper and keeps the dataset outside the project software license.",
+  "note": "Run scripts/fetch_imperfective_nli.py. The downloader uses the immutable upstream commit, verifies the exact Git blob SHA-1 and byte count, and writes a local SHA-256 manifest."
 }
