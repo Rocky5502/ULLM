@@ -7,12 +7,14 @@ output_dir: results/raw
 max_concurrency: 6
 request_timeout_s: 120
 max_retries: 6
-# v2 freeze: the v1 100-call smoke showed provider/gateway completion-budget
-# truncation at 220 tokens (DeepSeek reasoning consumed the budget; Gemini JSON was
-# cut mid-object). Raise the cap before any main-study result exists. Prompt,
-# decoding, dataset, model panel, RQs, metrics, and all other scientific settings
-# remain unchanged. Smoke must pass again before the main study is authorized.
-max_tokens: 1024
+# v3 freeze: v1 at 220 tokens truncated DeepSeek/Gemini; v2 at 1024 fixed Gemini
+# and reduced DeepSeek parse failures from 12/20 to 3/20, with all three remaining
+# DeepSeek failures ending at finish_reason=length. Raise only the completion ceiling
+# before any main-study result exists. This is a maximum, not a requested output
+# length: routes that stop normally are not forced to consume the budget.
+# Prompt, decoding temperatures, dataset, model panel, RQs, metrics, thresholds, and
+# all other scientific settings remain unchanged. A fresh smoke must pass before RUN.
+max_tokens: 4096
 
 # The scientific primary condition is intentionally neutral: it does not teach the
 # telicity/imperfective rule whose recognition we are trying to measure.
