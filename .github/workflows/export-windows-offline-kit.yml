@@ -11,7 +11,7 @@ jobs:
       - name: Checkout exact frozen experiment commit
         uses: actions/checkout@v4
         with:
-          ref: 8b4ccab4509e42da7d315e1161085e5a99591181
+          ref: 213778b59f3838c4bbee51c963c81ee1559ed0b1
           fetch-depth: 0
 
       - name: Set up Python 3.11
@@ -42,9 +42,9 @@ jobs:
 
           python -m pip download --only-binary=:all: -r requirements-frozen.txt -d offline-kit\wheelhouse
 
-          git branch -f experiment-ready-v1 8b4ccab4509e42da7d315e1161085e5a99591181
-          git bundle create offline-kit\ULLM-experiment-ready-v1.bundle experiment-ready-v1
-          git bundle verify offline-kit\ULLM-experiment-ready-v1.bundle
+          git branch -f experiment-ready-v4 213778b59f3838c4bbee51c963c81ee1559ed0b1
+          git bundle create offline-kit\ULLM-experiment-ready-v4.bundle experiment-ready-v4
+          git bundle verify offline-kit\ULLM-experiment-ready-v4.bundle
 
           Copy-Item data\imperfectiveNLI.json offline-kit\data\imperfectiveNLI.json
           Copy-Item data\MANIFEST.local.json offline-kit\data\MANIFEST.local.json
@@ -60,9 +60,9 @@ jobs:
           $Repo = Join-Path $TargetRoot "ULLM"
           if (Test-Path $Repo) { throw "Target already exists: $Repo" }
           Set-Location $TargetRoot
-          git clone -b experiment-ready-v1 (Join-Path $Kit "ULLM-experiment-ready-v1.bundle") ULLM
+          git clone -b experiment-ready-v4 (Join-Path $Kit "ULLM-experiment-ready-v4.bundle") ULLM
           Set-Location $Repo
-          if ((git rev-parse HEAD).Trim() -ne "8b4ccab4509e42da7d315e1161085e5a99591181") { throw "Frozen commit mismatch" }
+          if ((git rev-parse HEAD).Trim() -ne "213778b59f3838c4bbee51c963c81ee1559ed0b1") { throw "Frozen commit mismatch" }
           py -3.11 -m venv .venv
           .\.venv\Scripts\Activate.ps1
           python -m pip install --no-index --find-links (Join-Path $Kit "wheelhouse") -r requirements-frozen.txt
@@ -78,7 +78,7 @@ jobs:
           Write-Host "WINDOWS OFFLINE EXPERIMENT SETUP PASS" -ForegroundColor Green
           '@ | Set-Content -Encoding UTF8 offline-kit\SETUP_WINDOWS_OFFLINE.ps1
 
-          '8b4ccab4509e42da7d315e1161085e5a99591181' | Set-Content -Encoding ASCII offline-kit\FROZEN_COMMIT.txt
+          '213778b59f3838c4bbee51c963c81ee1559ed0b1' | Set-Content -Encoding ASCII offline-kit\FROZEN_COMMIT.txt
 
           Get-ChildItem offline-kit -Recurse -File | Where-Object { $_.Name -ne 'CHECKSUMS.sha256' } | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
@@ -89,7 +89,7 @@ jobs:
       - name: Upload complete offline kit
         uses: actions/upload-artifact@v4
         with:
-          name: ULLM-Windows-offline-experiment-ready-v1
+          name: ULLM-Windows-offline-experiment-ready-v4
           path: offline-kit
           if-no-files-found: error
           retention-days: 7
