@@ -7,7 +7,12 @@ output_dir: results/raw
 max_concurrency: 6
 request_timeout_s: 120
 max_retries: 6
-max_tokens: 220
+# v2 freeze: the v1 100-call smoke showed provider/gateway completion-budget
+# truncation at 220 tokens (DeepSeek reasoning consumed the budget; Gemini JSON was
+# cut mid-object). Raise the cap before any main-study result exists. Prompt,
+# decoding, dataset, model panel, RQs, metrics, and all other scientific settings
+# remain unchanged. Smoke must pass again before the main study is authorized.
+max_tokens: 1024
 
 # The scientific primary condition is intentionally neutral: it does not teach the
 # telicity/imperfective rule whose recognition we are trying to measure.
