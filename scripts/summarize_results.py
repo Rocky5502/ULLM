@@ -21,6 +21,8 @@ from ullm.metrics import (
     teleological_overconfidence_rate,
 )
 
+LABEL_ORDER = ("True", "False", "Unknown")
+
 
 def _usage(rows: list[dict], key: str) -> float:
     vals = []
@@ -38,6 +40,10 @@ def _usage(rows: list[dict], key: str) -> float:
     return float(sum(vals))
 
 
+def probability_argmax(prob: dict[str, float]) -> str:
+    return max(LABEL_ORDER, key=lambda k: float(prob[k]))
+
+
 def summarize(path: Path, n_bins: int = 15) -> dict:
     all_rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
     deterministic = [r for r in all_rows if int(r.get("repeat", 0)) == 0]
@@ -49,8 +55,12 @@ def summarize(path: Path, n_bins: int = 15) -> dict:
         for r in deterministic
     )
     gold = [r["example"]["label"] for r in rows]
+    # A1: preserve the explicit label as the primary discrete decision.
     pred = [r["prediction"]["label"] for r in rows]
     probs = [r["prediction"]["probabilities"] for r in rows]
+    # Top-label ECE is calibration of the probability argmax class, not necessarily
+    # the separately verbalized discrete label when the two interfaces disagree.
+    prob_top_pred = [probability_argmax(pr) for pr in probs]
     groups = [r["example"]["group"] for r in rows]
     ga = group_accuracy(groups, gold, pred)
     pair = paired_condition_consistency(rows)
@@ -71,7 +81,7 @@ def summarize(path: Path, n_bins: int = 15) -> dict:
         "SUR": semantic_uncertainty_recognition(groups, probs),
         "TOR@0.80": teleological_overconfidence_rate(groups, probs, 0.80),
         "ADG": ambiguity_discrimination_gap(groups, probs),
-        "ECE": ece(gold, pred, probs, n_bins=n_bins),
+        "ECE": ece(gold, prob_top_pred, probs, n_bins=n_bins),
         "ECE_True": cwe["True"],
         "ECE_False": cwe["False"],
         "ECE_Unknown": cwe["Unknown"],
