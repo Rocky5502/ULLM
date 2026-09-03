@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -21,6 +22,7 @@ STALE_TOKENS = (
     "primary_protocol",
     "protocols: [strict, bare]",
 )
+HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
 
 def fail(message: str, errors: list[str]) -> None:
@@ -39,7 +41,30 @@ def main() -> None:
     args = p.parse_args()
 
     errors: list[str] = []
-    for path in (args.config, args.models, args.hypotheses, args.paper, args.readme):
+    required_paths = [
+        args.config,
+        args.models,
+        args.hypotheses,
+        args.paper,
+        args.readme,
+        Path("requirements.txt"),
+        Path("requirements-frozen.txt"),
+        Path("data/MANIFEST.json"),
+        Path("data/THIRD_PARTY_DATA.md"),
+        Path("scripts/fetch_imperfective_nli.py"),
+        Path("scripts/validate_dataset.py"),
+        Path("scripts/preflight.py"),
+        Path("scripts/audit_request_plan.py"),
+        Path("scripts/offline_rehearsal.py"),
+        Path("docs/PROGRESS_LOG.md"),
+        Path("docs/LOCAL_RUNBOOK.md"),
+        Path("docs/REPRODUCIBILITY.md"),
+        Path(".github/workflows/ci.yml"),
+        Path(".github/workflows/dataset-integrity.yml"),
+        Path(".github/workflows/paper.yml"),
+        Path(".gitignore"),
+    ]
+    for path in required_paths:
         if not path.exists():
             fail(f"missing required file: {path}", errors)
     if errors:
@@ -52,6 +77,10 @@ def main() -> None:
     hypotheses_cfg = yaml.safe_load(args.hypotheses.read_text(encoding="utf-8"))
     paper = args.paper.read_text(encoding="utf-8")
     readme = args.readme.read_text(encoding="utf-8")
+    gitignore = Path(".gitignore").read_text(encoding="utf-8")
+    run_source = Path("src/ullm/run.py").read_text(encoding="utf-8")
+    frozen_requirements = Path("requirements-frozen.txt").read_text(encoding="utf-8")
+    data_manifest = json.loads(Path("data/MANIFEST.json").read_text(encoding="utf-8"))
 
     required_config = {
         "seed",
@@ -180,6 +209,43 @@ def main() -> None:
     if call_budget != 15800:
         fail(f"frozen main-study call budget drifted from 15,800 to {call_budget}", errors)
 
+    # Machine-verifiable third-party provenance must be immutable and self-consistent.
+    source_commit = str(data_manifest.get("source_commit", ""))
+    source_blob = str(data_manifest.get("upstream_git_blob_sha1", ""))
+    raw_url = str(data_manifest.get("source_raw_url", ""))
+    if not HEX40.fullmatch(source_commit):
+        fail("data/MANIFEST.json source_commit must be a 40-hex Git commit", errors)
+    if not HEX40.fullmatch(source_blob):
+        fail("data/MANIFEST.json upstream_git_blob_sha1 must be a 40-hex Git blob", errors)
+    if source_commit and source_commit not in raw_url:
+        fail("data/MANIFEST.json source_raw_url must contain the immutable source_commit", errors)
+    if int(data_manifest.get("expected_examples", -1)) != 400:
+        fail("data/MANIFEST.json must freeze exactly 400 examples", errors)
+    if int(data_manifest.get("expected_bytes", -1)) != 100970:
+        fail("data/MANIFEST.json expected byte count drifted from 100970", errors)
+
+    # Prevent accidental publication/relicensing of local/raw artifacts.
+    required_ignore_tokens = (
+        "data/imperfectiveNLI.json",
+        "data/MANIFEST.local.json",
+        "data/dataset_manifest.json",
+        "results/raw/**",
+        "results/processed/**",
+        "artifacts/local/**",
+    )
+    for token in required_ignore_tokens:
+        if token not in gitignore:
+            fail(f".gitignore missing required research-artifact safeguard: {token}", errors)
+
+    # The runner must retain a truly offline request construction path.
+    for token in ("--dry-run", "execution_mode", "write_request_plan"):
+        if token not in run_source:
+            fail(f"runner missing zero-API rehearsal invariant: {token}", errors)
+
+    for package in ("httpx==", "PyYAML==", "numpy==", "pandas==", "scipy==", "matplotlib==", "pytest=="):
+        if package not in frozen_requirements:
+            fail(f"requirements-frozen.txt missing exact pin for {package[:-2]}", errors)
+
     payload = {
         "status": "PASS" if not errors else "FAIL",
         "models": ids,
@@ -187,6 +253,10 @@ def main() -> None:
         "primary_prompt": primary,
         "robustness_n": n_robust,
         "main_call_budget": call_budget,
+        "dataset_source_commit": source_commit,
+        "dataset_git_blob": source_blob,
+        "offline_rehearsal": "present" if Path("scripts/offline_rehearsal.py").exists() else "missing",
+        "progress_ledger": "present" if Path("docs/PROGRESS_LOG.md").exists() else "missing",
         "errors": errors,
     }
     print(json.dumps(payload, indent=2))
