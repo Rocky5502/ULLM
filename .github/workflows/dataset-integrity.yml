@@ -10,8 +10,11 @@ on:
       - 'src/ullm/schemas.py'
       - 'scripts/fetch_imperfective_nli.py'
       - 'scripts/validate_dataset.py'
+      - 'scripts/validate_project.py'
+      - 'scripts/preflight.py'
       - 'scripts/audit_request_plan.py'
       - 'scripts/offline_rehearsal.py'
+      - 'scripts/environment_snapshot.py'
       - 'requirements-frozen.txt'
       - '.github/workflows/dataset-integrity.yml'
   pull_request:
@@ -23,8 +26,11 @@ on:
       - 'src/ullm/schemas.py'
       - 'scripts/fetch_imperfective_nli.py'
       - 'scripts/validate_dataset.py'
+      - 'scripts/validate_project.py'
+      - 'scripts/preflight.py'
       - 'scripts/audit_request_plan.py'
       - 'scripts/offline_rehearsal.py'
+      - 'scripts/environment_snapshot.py'
       - 'requirements-frozen.txt'
       - '.github/workflows/dataset-integrity.yml'
   workflow_dispatch:
@@ -57,7 +63,9 @@ jobs:
         env:
           PYTHONPATH: src
         run: python scripts/offline_rehearsal.py
-      - name: Upload provenance manifests and rehearsal snapshot
+      - name: Record credential-safe CI environment snapshot
+        run: python scripts/environment_snapshot.py --out artifacts/local/ci_environment.json
+      - name: Upload provenance, environment, and rehearsal evidence
         uses: actions/upload-artifact@v4
         with:
           name: ullm-offline-freeze-artifacts
@@ -65,4 +73,5 @@ jobs:
             data/MANIFEST.local.json
             data/dataset_manifest.json
             artifacts/local/offline_rehearsal_*.json
+            artifacts/local/ci_environment.json
           if-no-files-found: error
