@@ -208,6 +208,7 @@ def main() -> None:
         run("scripts/bootstrap_summary.py", str(det), "--bootstrap", "25", "--out", str(processed / "bootstrap.csv"))
         run("scripts/analyze_sampling.py", str(sampling_path), "--expected-k", "5", "--out", str(processed / "sampling.csv"), "--ranking-out", str(processed / "sampling_ranking.csv"))
         run("scripts/analyze_uncertainty_ranking.py", str(det), "--sampling", str(processed / "sampling.csv"), "--out", str(processed / "ranking.csv"))
+        run("scripts/bootstrap_uncertainty_ranking.py", str(det), "--sampling", str(processed / "sampling.csv"), "--bootstrap", "25", "--out", str(processed / "ranking_bootstrap.csv"))
         run("scripts/analyze_pairwise.py", str(det), "--bootstrap", "25", "--out", str(processed / "pairwise.csv"), "--transitions-out", str(processed / "transitions.csv"))
         run("scripts/analyze_selective.py", str(det), "--sampling", str(processed / "sampling.csv"), "--out", str(processed / "selective.csv"))
         run("scripts/analyze_recheck.py", "--base", str(det), "--verifier", str(verifier_path), "--out", str(processed / "recheck.csv"))
@@ -219,6 +220,7 @@ def main() -> None:
             processed / "bootstrap.csv",
             processed / "sampling.csv",
             processed / "ranking.csv",
+            processed / "ranking_bootstrap.csv",
             processed / "pairwise.csv",
             processed / "selective.csv",
             processed / "recheck.csv",
