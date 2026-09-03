@@ -40,6 +40,7 @@ CANONICAL_PROCESSED = [
     "prompt_robustness.csv",
     "selective.csv",
     "recheck.csv",
+    "hypothesis_evidence.csv",
 ]
 ANALYSIS_MANIFEST = ROOT / "results" / "processed" / "analysis_manifest.json"
 
@@ -84,7 +85,6 @@ def pre_gate(errors: list[str]) -> None:
         text = read(path)
         if "TBD" not in text:
             fail(errors, f"pre-run generated table unexpectedly lacks TBD: {path.relative_to(ROOT)}")
-    # Real result figures must never be committed as a substitute for local audited data.
     committed_like = [p for p in EXPECTED_FIGURES if p.exists()]
     if committed_like:
         fail(errors, f"pre-run empirical result figure unexpectedly present: {committed_like}")
@@ -121,10 +121,7 @@ def post_gate(errors: list[str]) -> None:
         if provenance.get("status") != "PASS":
             fail(errors, "post-run analysis provenance manifest is not PASS")
         if provenance.get("evidence_class") != "canonical-live-analysis":
-            fail(
-                errors,
-                "post-run analysis provenance is not marked canonical-live-analysis",
-            )
+            fail(errors, "post-run analysis provenance is not marked canonical-live-analysis")
         if not provenance.get("analysis_git_commit"):
             fail(errors, "post-run analysis provenance lacks analysis Git commit")
         if provenance.get("scientific_tree_dirty") is not False:
