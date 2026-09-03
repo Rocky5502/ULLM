@@ -15,6 +15,7 @@ on:
       - 'scripts/audit_request_plan.py'
       - 'scripts/offline_rehearsal.py'
       - 'scripts/environment_snapshot.py'
+      - 'scripts/freeze_protocol.py'
       - 'requirements-frozen.txt'
       - '.github/workflows/dataset-integrity.yml'
   pull_request:
@@ -31,6 +32,7 @@ on:
       - 'scripts/audit_request_plan.py'
       - 'scripts/offline_rehearsal.py'
       - 'scripts/environment_snapshot.py'
+      - 'scripts/freeze_protocol.py'
       - 'requirements-frozen.txt'
       - '.github/workflows/dataset-integrity.yml'
   workflow_dispatch:
@@ -59,19 +61,24 @@ jobs:
         env:
           PYTHONPATH: src
         run: python scripts/preflight.py
+      - name: Freeze machine-readable pre-API protocol
+        env:
+          PYTHONPATH: src
+        run: python scripts/freeze_protocol.py --out artifacts/local/ci_protocol_freeze.json
       - name: Rehearse all 15,800 main-study requests without API access
         env:
           PYTHONPATH: src
         run: python scripts/offline_rehearsal.py
       - name: Record credential-safe CI environment snapshot
         run: python scripts/environment_snapshot.py --out artifacts/local/ci_environment.json
-      - name: Upload provenance, environment, and rehearsal evidence
+      - name: Upload provenance, protocol, environment, and rehearsal evidence
         uses: actions/upload-artifact@v4
         with:
           name: ullm-offline-freeze-artifacts
           path: |
             data/MANIFEST.local.json
             data/dataset_manifest.json
+            artifacts/local/ci_protocol_freeze.json
             artifacts/local/offline_rehearsal_*.json
             artifacts/local/ci_environment.json
           if-no-files-found: error
