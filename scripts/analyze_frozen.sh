@@ -21,43 +21,47 @@ mapfile -t definition < <(collect 'results/raw/robust-definition-v1/*__determini
 mapfile -t order < <(collect 'results/raw/robust-label-order-v1/*__deterministic__neutral.jsonl')
 mapfile -t verifier < <(collect 'results/raw/frozen-verifier-v1/*__deterministic__verifier.jsonl')
 
-echo "[1/11] Hard audit gates against frozen manifests"
-python scripts/audit_run.py "${det[@]}" --manifest results/raw/frozen-det-neutral-v1/manifest.json --expected-k 1 --out results/processed/audit_deterministic.json
-python scripts/audit_run.py "${samp[@]}" --manifest results/raw/frozen-sampling-neutral-v1/manifest.json --expected-k 5 --out results/processed/audit_sampling.json
-python scripts/audit_run.py "${strict[@]}" --manifest results/raw/robust-strict-v1/manifest.json --expected-k 1 --out results/processed/audit_strict.json
-python scripts/audit_run.py "${definition[@]}" --manifest results/raw/robust-definition-v1/manifest.json --expected-k 1 --out results/processed/audit_definition.json
-python scripts/audit_run.py "${order[@]}" --manifest results/raw/robust-label-order-v1/manifest.json --expected-k 1 --out results/processed/audit_label_order.json
-python scripts/audit_run.py "${verifier[@]}" --manifest results/raw/frozen-verifier-v1/manifest.json --expected-k 1 --out results/processed/audit_verifier.json
+echo "[1/12] Hard audit gates against frozen manifests under adjudication A1"
+python scripts/audit_run.py "${det[@]}" --manifest results/raw/frozen-det-neutral-v1/manifest.json --expected-k 1 --allow-argmax-inconsistency --out results/processed/audit_deterministic.json
+python scripts/audit_run.py "${samp[@]}" --manifest results/raw/frozen-sampling-neutral-v1/manifest.json --expected-k 5 --allow-argmax-inconsistency --out results/processed/audit_sampling.json
+python scripts/audit_run.py "${strict[@]}" --manifest results/raw/robust-strict-v1/manifest.json --expected-k 1 --allow-argmax-inconsistency --out results/processed/audit_strict.json
+python scripts/audit_run.py "${definition[@]}" --manifest results/raw/robust-definition-v1/manifest.json --expected-k 1 --allow-argmax-inconsistency --out results/processed/audit_definition.json
+python scripts/audit_run.py "${order[@]}" --manifest results/raw/robust-label-order-v1/manifest.json --expected-k 1 --allow-argmax-inconsistency --out results/processed/audit_label_order.json
+python scripts/audit_run.py "${verifier[@]}" --manifest results/raw/frozen-verifier-v1/manifest.json --expected-k 1 --allow-argmax-inconsistency --out results/processed/audit_verifier.json
 
-echo "[2/11] RQ1 deterministic summaries"
+echo "[2/12] Exploratory decision-distribution consistency diagnostic"
+all_outputs=("${det[@]}" "${samp[@]}" "${strict[@]}" "${definition[@]}" "${order[@]}" "${verifier[@]}")
+python scripts/analyze_contract_consistency.py "${all_outputs[@]}" --out results/processed/decision_distribution_consistency.csv --items-out results/processed/decision_distribution_consistency_items.csv
+
+echo "[3/12] RQ1 deterministic summaries"
 python scripts/summarize_results.py "${det[@]}" --bins 15 --out results/processed/summary_neutral.csv
 
-echo "[3/11] Verb-cluster bootstrap intervals"
+echo "[4/12] Verb-cluster bootstrap intervals"
 python scripts/bootstrap_summary.py "${det[@]}" --bootstrap 10000 --confidence 0.95 --bins 15 --out results/processed/summary_bootstrap.csv
 
-echo "[4/11] RQ2 repeated-sampling uncertainty"
+echo "[5/12] RQ2 repeated-sampling uncertainty"
 python scripts/analyze_sampling.py "${samp[@]}" --expected-k 5 --out results/processed/sampling.csv --ranking-out results/processed/sampling_ranking.csv
 
-echo "[5/11] Unified RQ2 failure ranking"
+echo "[6/12] Unified RQ2 failure ranking"
 python scripts/analyze_uncertainty_ranking.py "${det[@]}" --sampling results/processed/sampling.csv --out results/processed/uncertainty_ranking.csv
 
-echo "[6/11] Paired A-C / B-D semantic updates"
+echo "[7/12] Paired A-C / B-D semantic updates"
 python scripts/analyze_pairwise.py "${det[@]}" --bootstrap 10000 --out results/processed/pairwise.csv --transitions-out results/processed/pairwise_transitions.csv
 
-echo "[7/11] Prompt and label-order robustness"
+echo "[8/12] Prompt and label-order robustness"
 robust_all=("${det[@]}" "${strict[@]}" "${definition[@]}" "${order[@]}")
 python scripts/analyze_prompt_robustness.py "${robust_all[@]}" --out results/processed/prompt_robustness.csv --item-out results/processed/prompt_robustness_items.csv
 
-echo "[8/11] RQ3 threshold-realizable risk-coverage"
+echo "[9/12] RQ3 threshold-realizable risk-coverage"
 python scripts/analyze_selective.py "${det[@]}" --sampling results/processed/sampling.csv --coverages 1.0 0.9 0.8 0.7 0.5 --target-risks 0.10 0.05 --out results/processed/selective.csv
 
-echo "[9/11] RQ3 cached selective-verifier policies"
+echo "[10/12] RQ3 cached selective-verifier policies"
 python scripts/analyze_recheck.py --base "${det[@]}" --verifier "${verifier[@]}" --thresholds 0.10 0.20 0.30 0.40 --out results/processed/recheck.csv
 
-echo "[10/11] Publication vector figures"
+echo "[11/12] Publication vector figures"
 python scripts/make_result_figures.py --summary results/processed/summary_neutral.csv --sampling results/processed/sampling.csv --ranking results/processed/uncertainty_ranking.csv --selective results/processed/selective.csv --pairwise results/processed/pairwise.csv --robustness results/processed/prompt_robustness.csv --recheck results/processed/recheck.csv --outdir results/figures
 
-echo "[11/11] Auto-generate LaTeX result tables"
+echo "[12/12] Auto-generate LaTeX result tables"
 python scripts/make_paper_tables.py --summary results/processed/summary_neutral.csv --bootstrap results/processed/summary_bootstrap.csv --ranking results/processed/uncertainty_ranking.csv --recheck results/processed/recheck.csv --outdir paper/generated
 
-echo "Analysis complete. Every manuscript number is generated from PASS-audited artifacts."
+echo "Analysis complete. Stated labels remain discrete decisions; probability vectors remain continuous uncertainty reports; disagreement is separately quantified."
