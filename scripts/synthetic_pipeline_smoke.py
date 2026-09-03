@@ -27,7 +27,7 @@ def prediction(label: str, probs: dict[str, float]) -> dict[str, Any]:
     return {
         "label": label,
         "probabilities": probs,
-        "reason_short": "synthetic fixture",
+        "reason_short": "Synthetic fixture only; not scientific evidence.",
         "probability_sum_raw": sum(probs.values()),
         "normalization_delta": abs(sum(probs.values()) - 1.0),
         "argmax_consistent": label == max(probs, key=probs.get),
@@ -117,6 +117,8 @@ def record(ex: dict[str, str], pred: dict[str, Any], repeat: int, prompt: str) -
         "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         "latency_s": 0.01,
         "request_id": f"synthetic-{ex['id']}-{repeat}",
+        "http_status": 200,
+        "attempts_used": 1,
         "raw_response": {"synthetic": True},
     }
 
@@ -136,9 +138,10 @@ def manifest(dataset: Path, mode: str, k: int, selected: list[str]) -> dict[str,
     config = ROOT / "configs/experiment.yaml"
     models = ROOT / "configs/models.yaml"
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "run_id": f"synthetic-{mode}",
         "created_utc": "2026-09-03T00:00:00+00:00",
+        "execution_mode": "live",
         "dataset_sha256": sha256(dataset),
         "dataset_path": str(dataset),
         "dataset_n": len(selected),
