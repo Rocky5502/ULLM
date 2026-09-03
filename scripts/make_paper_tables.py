@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -167,6 +166,52 @@ Model & Signal & Error AUROC$\uparrow$ & Error AUPRC$\uparrow$ & E-AURC$\downarr
 \end{{table*}}"""
 
 
+def rq2_ci_table(ranking_bootstrap: pd.DataFrame, models: list[str]) -> str:
+    labels = {
+        "1-maxprob": r"$1-\max p$",
+        "predictive_entropy": "Pred. entropy",
+        "sampling_variation_ratio": "Sampling variation",
+        "sampling_label_entropy": "Sampling entropy",
+    }
+    rows: list[str] = []
+    if ranking_bootstrap.empty:
+        base = ranking_bootstrap
+    else:
+        base = ranking_bootstrap[
+            (ranking_bootstrap["scope"] == "all")
+            & (ranking_bootstrap["metric"] == "error_AUROC")
+        ]
+    for model in models:
+        for signal, label in labels.items():
+            sub = base[
+                (base["model"] == model) & (base["signal"] == signal)
+            ] if not base.empty else base
+            if sub.empty:
+                estimate = ci = "TBD"
+            else:
+                r = sub.iloc[0]
+                estimate = fmt(r.get("estimate"))
+                ci = f"[{fmt(r.get('ci_low'))}, {fmt(r.get('ci_high'))}]"
+            rows.append(
+                f"{model_tex(model)} & {label} & {estimate} & {ci}" + ROW_END
+            )
+    body = "\n".join(rows)
+    return rf"""% AUTO-GENERATED. Companion RQ2 interval table; include if space permits.
+\begin{{table*}}[t]
+\centering
+\scriptsize
+\begin{{tabular}}{{@{{}}llcc@{{}}}}
+\toprule
+Model & Signal & Error AUROC & 95\% verb-cluster bootstrap CI \\
+\midrule
+{body}
+\bottomrule
+\end{{tabular}}
+\caption{{Verb-cluster bootstrap intervals for the primary RQ2 error-ranking statistic. Undefined intervals are shown as -- when a resample lacks both error classes.}}
+\label{{tab:rq2-ci}}
+\end{{table*}}"""
+
+
 def rq3_table(recheck: pd.DataFrame, models: list[str], config: dict) -> str:
     signal = str(config["selective"]["primary_recheck_signal"])
     threshold = float(config["selective"]["primary_recheck_threshold"])
@@ -227,6 +272,7 @@ def main() -> None:
     p.add_argument("--summary", type=Path, required=True)
     p.add_argument("--bootstrap", type=Path, required=True)
     p.add_argument("--ranking", type=Path, required=True)
+    p.add_argument("--ranking-bootstrap", type=Path, required=True)
     p.add_argument("--recheck", type=Path, required=True)
     p.add_argument("--models", type=Path, default=Path("configs/models.yaml"))
     p.add_argument("--config", type=Path, default=Path("configs/experiment.yaml"))
@@ -238,11 +284,13 @@ def main() -> None:
     summary = pd.read_csv(args.summary)
     bootstrap = pd.read_csv(args.bootstrap)
     ranking = pd.read_csv(args.ranking)
+    ranking_bootstrap = pd.read_csv(args.ranking_bootstrap)
     recheck = pd.read_csv(args.recheck)
 
     write(args.outdir / "rq1_table.tex", rq1_table(summary, models))
     write(args.outdir / "rq1_ci_table.tex", rq1_ci_table(bootstrap, models))
     write(args.outdir / "rq2_table.tex", rq2_table(ranking, models))
+    write(args.outdir / "rq2_ci_table.tex", rq2_ci_table(ranking_bootstrap, models))
     write(args.outdir / "rq3_table.tex", rq3_table(recheck, models, config))
 
 
