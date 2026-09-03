@@ -40,19 +40,19 @@ jobs:
         if: matrix.python-version == '3.11'
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/run_frozen.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | Format-List
-            exit 1
-          }
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/analyze_frozen.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | Format-List
-            exit 1
+          foreach ($path in @(
+            'scripts/run_frozen.ps1',
+            'scripts/resume_after_stage5_contract.ps1',
+            'scripts/analyze_frozen.ps1'
+          )) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              Write-Host "PowerShell parse failure: $path"
+              $errors | Format-List
+              exit 1
+            }
           }
       - name: Zero-API end-to-end analysis smoke
         if: matrix.python-version == '3.11'
