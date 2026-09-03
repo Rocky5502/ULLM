@@ -29,6 +29,18 @@ EXPECTED_AUDITS = [
 EXPECTED_FIGURES = [
     ROOT / "results" / "figures" / "rq1_group_c_uncertainty.pdf",
 ]
+CANONICAL_PROCESSED = [
+    "summary_neutral.csv",
+    "summary_bootstrap.csv",
+    "sampling.csv",
+    "uncertainty_ranking.csv",
+    "uncertainty_ranking_bootstrap.csv",
+    "pairwise.csv",
+    "pairwise_transitions.csv",
+    "prompt_robustness.csv",
+    "selective.csv",
+    "recheck.csv",
+]
 
 PREDECLARED_SENTINELS = (
     "All empirical values in this section remain \\textbf{TBD}",
@@ -89,17 +101,7 @@ def post_gate(errors: list[str]) -> None:
         if not path.is_file() or path.stat().st_size == 0:
             fail(errors, f"post-run empirical figure missing/empty: {path.relative_to(ROOT)}")
 
-    # Require the canonical processed artifacts that feed generated tables/figures.
-    required_processed = [
-        "summary.csv",
-        "bootstrap.csv",
-        "sampling.csv",
-        "uncertainty_ranking.csv",
-        "pairwise.csv",
-        "selective.csv",
-        "recheck.csv",
-    ]
-    for name in required_processed:
+    for name in CANONICAL_PROCESSED:
         path = ROOT / "results" / "processed" / name
         if not path.is_file() or path.stat().st_size == 0:
             fail(errors, f"post-run processed artifact missing/empty: results/processed/{name}")
