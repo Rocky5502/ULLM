@@ -3,7 +3,8 @@
 
 The fixture is deliberately tiny and synthetic. It verifies CLI wiring, JSONL schema,
 manifest-aware audits, bootstrap code, ranking/selective analyses, verifier alignment,
-vector figure generation, and LaTeX table generation. It is never used as evidence.
+preregistered evidence synthesis, vector figure generation, and LaTeX table generation.
+It is never used as evidence.
 """
 from __future__ import annotations
 
@@ -87,11 +88,7 @@ def base_prediction(ex: dict[str, str]) -> dict[str, Any]:
     gold = ex["label"]
     if ex["id"] == "C_002":
         return prediction("True", {"True": 0.70, "False": 0.10, "Unknown": 0.20})
-    probs = {
-        "True": 0.05,
-        "False": 0.05,
-        "Unknown": 0.05,
-    }
+    probs = {"True": 0.05, "False": 0.05, "Unknown": 0.05}
     probs[gold] = 0.90
     return prediction(gold, probs)
 
@@ -212,6 +209,7 @@ def main() -> None:
         run("scripts/analyze_pairwise.py", str(det), "--bootstrap", "25", "--out", str(processed / "pairwise.csv"), "--transitions-out", str(processed / "transitions.csv"))
         run("scripts/analyze_selective.py", str(det), "--sampling", str(processed / "sampling.csv"), "--out", str(processed / "selective.csv"))
         run("scripts/analyze_recheck.py", "--base", str(det), "--verifier", str(verifier_path), "--out", str(processed / "recheck.csv"))
+        run("scripts/analyze_hypotheses.py", "--det", str(det), "--bootstrap", str(processed / "bootstrap.csv"), "--ranking-bootstrap", str(processed / "ranking_bootstrap.csv"), "--recheck", str(processed / "recheck.csv"), "--permutations", "25", "--out", str(processed / "hypothesis_evidence.csv"))
         run("scripts/make_result_figures.py", "--summary", str(processed / "summary.csv"), "--sampling", str(processed / "sampling.csv"), "--ranking", str(processed / "ranking.csv"), "--selective", str(processed / "selective.csv"), "--pairwise", str(processed / "pairwise.csv"), "--recheck", str(processed / "recheck.csv"), "--outdir", str(figures))
         run("scripts/make_paper_tables.py", "--summary", str(processed / "summary.csv"), "--bootstrap", str(processed / "bootstrap.csv"), "--ranking", str(processed / "ranking.csv"), "--ranking-bootstrap", str(processed / "ranking_bootstrap.csv"), "--recheck", str(processed / "recheck.csv"), "--outdir", str(tables))
 
@@ -224,6 +222,7 @@ def main() -> None:
             processed / "pairwise.csv",
             processed / "selective.csv",
             processed / "recheck.csv",
+            processed / "hypothesis_evidence.csv",
             figures / "rq1_group_c_uncertainty.pdf",
             tables / "rq1_table.tex",
             tables / "rq1_ci_table.tex",
