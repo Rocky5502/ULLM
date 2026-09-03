@@ -41,6 +41,7 @@ CANONICAL_PROCESSED = [
     "selective.csv",
     "recheck.csv",
 ]
+ANALYSIS_MANIFEST = ROOT / "results" / "processed" / "analysis_manifest.json"
 
 PREDECLARED_SENTINELS = (
     "All empirical values in this section remain \\textbf{TBD}",
@@ -58,10 +59,17 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def audit_status(path: Path) -> str | None:
+def json_obj(path: Path) -> dict | None:
     try:
-        obj = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def audit_status(path: Path) -> str | None:
+    obj = json_obj(path)
+    if obj is None:
         return None
     value = obj.get("status")
     return str(value) if value is not None else None
@@ -105,6 +113,24 @@ def post_gate(errors: list[str]) -> None:
         path = ROOT / "results" / "processed" / name
         if not path.is_file() or path.stat().st_size == 0:
             fail(errors, f"post-run processed artifact missing/empty: results/processed/{name}")
+
+    provenance = json_obj(ANALYSIS_MANIFEST)
+    if provenance is None:
+        fail(errors, "post-run canonical analysis_manifest.json is missing or invalid")
+    else:
+        if provenance.get("status") != "PASS":
+            fail(errors, "post-run analysis provenance manifest is not PASS")
+        if provenance.get("evidence_class") != "canonical-live-analysis":
+            fail(
+                errors,
+                "post-run analysis provenance is not marked canonical-live-analysis",
+            )
+        if not provenance.get("analysis_git_commit"):
+            fail(errors, "post-run analysis provenance lacks analysis Git commit")
+        if provenance.get("scientific_tree_dirty") is not False:
+            fail(errors, "post-run analysis provenance did not verify a clean scientific tree")
+        if len(provenance.get("raw_runs", [])) != 6:
+            fail(errors, "post-run analysis provenance does not cover all six raw run stages")
 
 
 def main() -> None:
