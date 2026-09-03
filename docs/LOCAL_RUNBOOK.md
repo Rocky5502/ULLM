@@ -4,7 +4,9 @@ This runbook is the handoff from the completed no-API preparation phase to the l
 
 ## 0. Ground rules
 
-- Run from a clean clone of `Rocky5502/ULLM` on the commit you intend to evaluate.
+- Recommended frozen starting point: branch `experiment-ready-v1`, exact commit `8b4ccab4509e42da7d315e1161085e5a99591181`. This exact commit passed the full CI matrix before any paid experiment.
+- Run from a clean clone of `Rocky5502/ULLM`; for the frozen v1 experiment, explicitly checkout `experiment-ready-v1` and verify `git rev-parse HEAD` equals the commit above before setting the API key.
+- Do not move or edit the experiment-ready branch for convenience. If a scientific setting must change, create and document a new protocol/checkpoint instead.
 - Do not edit `configs/experiment.yaml`, `configs/models.yaml`, `configs/preregistered_hypotheses.yaml`, or prompt definitions after the first paid call without starting a new protocol version.
 - Keep `ZZZ_API_KEY` only in the shell environment. Never paste it into source files, notebooks, logs, issues, or commits.
 - Raw API outputs remain under ignored `results/raw/` directories. Back them up separately after the run.
@@ -15,6 +17,8 @@ This runbook is the handoff from the completed no-API preparation phase to the l
 ### Windows PowerShell
 
 ```powershell
+git checkout experiment-ready-v1
+git rev-parse HEAD
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
@@ -26,6 +30,8 @@ $env:PYTHONPATH = "src"
 ### Linux/macOS
 
 ```bash
+git checkout experiment-ready-v1
+git rev-parse HEAD
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -34,7 +40,7 @@ python -m pip check
 export PYTHONPATH=src
 ```
 
-`requirements.txt` remains the compatibility range used by broad CI. `requirements-frozen.txt` is the exact tested environment snapshot for the frozen experiment.
+For frozen v1, `git rev-parse HEAD` must print `8b4ccab4509e42da7d315e1161085e5a99591181`. `requirements.txt` remains the compatibility range used by broad CI. `requirements-frozen.txt` is the exact tested environment snapshot for the frozen experiment.
 
 ## 2. Fetch and validate the exact benchmark
 
@@ -138,7 +144,7 @@ If an ID is absent or maps unexpectedly, **stop**. Do not silently substitute an
 bash scripts/run_frozen.sh
 ```
 
-The canonical runner now repeats the critical no-API gates automatically before touching the live catalogue: preflight, machine-readable protocol freeze, complete 15,800-request offline rehearsal, and environment snapshot. It then performs the live `/models` check and stops before chat-completion calls.
+The canonical runner repeats the critical no-API gates automatically before touching the live catalogue: preflight, machine-readable protocol freeze, complete 15,800-request offline rehearsal, and environment snapshot. It then performs the live `/models` check and stops before chat-completion calls.
 
 The runner asks for the explicit token `SMOKE`. That authorizes only the 100-call smoke test.
 
