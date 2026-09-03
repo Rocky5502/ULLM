@@ -1,0 +1,95 @@
+name: Export complete Windows offline experiment kit
+
+on:
+  push:
+    branches: [windows-delivery]
+
+jobs:
+  build-offline-kit:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout exact frozen experiment commit
+        uses: actions/checkout@v4
+        with:
+          ref: 8b4ccab4509e42da7d315e1161085e5a99591181
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install exact frozen environment and fetch exact benchmark
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m pip install --upgrade pip
+          pip install -r requirements-frozen.txt
+          python -m pip check
+          $env:PYTHONPATH = 'src'
+          python scripts/fetch_imperfective_nli.py
+          python scripts/validate_dataset.py data/imperfectiveNLI.json
+          python scripts/preflight.py
+          python scripts/freeze_protocol.py
+          python scripts/offline_rehearsal.py
+
+      - name: Assemble offline delivery kit
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path offline-kit\wheelhouse | Out-Null
+          New-Item -ItemType Directory -Force -Path offline-kit\data | Out-Null
+
+          python -m pip download --only-binary=:all: -r requirements-frozen.txt -d offline-kit\wheelhouse
+
+          git branch -f experiment-ready-v1 8b4ccab4509e42da7d315e1161085e5a99591181
+          git bundle create offline-kit\ULLM-experiment-ready-v1.bundle experiment-ready-v1
+          git bundle verify offline-kit\ULLM-experiment-ready-v1.bundle
+
+          Copy-Item data\imperfectiveNLI.json offline-kit\data\imperfectiveNLI.json
+          Copy-Item data\MANIFEST.local.json offline-kit\data\MANIFEST.local.json
+          Copy-Item data\dataset_manifest.json offline-kit\data\dataset_manifest.json
+          Copy-Item data\MANIFEST.json offline-kit\data\MANIFEST.json
+          Copy-Item data\THIRD_PARTY_DATA.md offline-kit\data\THIRD_PARTY_DATA.md
+          Copy-Item requirements-frozen.txt offline-kit\requirements-frozen.txt
+
+          @'
+          $ErrorActionPreference = "Stop"
+          $Kit = Split-Path -Parent $MyInvocation.MyCommand.Path
+          $TargetRoot = "G:\IASEAI2"
+          $Repo = Join-Path $TargetRoot "ULLM"
+          if (Test-Path $Repo) { throw "Target already exists: $Repo" }
+          Set-Location $TargetRoot
+          git clone -b experiment-ready-v1 (Join-Path $Kit "ULLM-experiment-ready-v1.bundle") ULLM
+          Set-Location $Repo
+          if ((git rev-parse HEAD).Trim() -ne "8b4ccab4509e42da7d315e1161085e5a99591181") { throw "Frozen commit mismatch" }
+          py -3.11 -m venv .venv
+          .\.venv\Scripts\Activate.ps1
+          python -m pip install --no-index --find-links (Join-Path $Kit "wheelhouse") -r requirements-frozen.txt
+          python -m pip check
+          Copy-Item (Join-Path $Kit "data\imperfectiveNLI.json") data\imperfectiveNLI.json
+          Copy-Item (Join-Path $Kit "data\MANIFEST.local.json") data\MANIFEST.local.json
+          Copy-Item (Join-Path $Kit "data\dataset_manifest.json") data\dataset_manifest.json
+          $env:PYTHONPATH = "src"
+          python scripts/preflight.py
+          python scripts/freeze_protocol.py
+          python scripts/offline_rehearsal.py
+          python scripts/environment_snapshot.py
+          Write-Host "WINDOWS OFFLINE EXPERIMENT SETUP PASS" -ForegroundColor Green
+          '@ | Set-Content -Encoding UTF8 offline-kit\SETUP_WINDOWS_OFFLINE.ps1
+
+          '8b4ccab4509e42da7d315e1161085e5a99591181' | Set-Content -Encoding ASCII offline-kit\FROZEN_COMMIT.txt
+
+          Get-ChildItem offline-kit -Recurse -File | Where-Object { $_.Name -ne 'CHECKSUMS.sha256' } | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            $rel = $_.FullName.Substring((Resolve-Path offline-kit).Path.Length + 1).Replace('\\','/')
+            "$hash  $rel"
+          } | Set-Content -Encoding ASCII offline-kit\CHECKSUMS.sha256
+
+      - name: Upload complete offline kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: ULLM-Windows-offline-experiment-ready-v1
+          path: offline-kit
+          if-no-files-found: error
+          retention-days: 7
