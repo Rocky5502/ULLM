@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="780" viewBox="0 0 1100 780" role="img" aria-labelledby="title desc">
+  <title id="title">Semantic uncertainty versus predictive uncertainty</title>
+  <desc id="desc">Conceptual distinction between event-level semantic uncertainty and model-level predictive uncertainty for imperfective telic evidence.</desc>
+  <defs>
+    <style>
+      .t{font-family:Arial,Helvetica,sans-serif;fill:#172033}.h{font-size:25px;font-weight:700}.m{font-size:20px;font-weight:700}.b{font-size:18px}.s{font-size:16px}.box{stroke:#6b7280;stroke-width:2;rx:14}.arr{stroke:#677080;stroke-width:2.3;fill:none;marker-end:url(#a)}
+    </style>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#677080"/></marker>
+  </defs>
+  <rect width="1100" height="780" fill="#fff"/>
+  <rect class="box" x="210" y="35" width="680" height="115" fill="#f8fafc"/>
+  <text class="t h" x="550" y="70" text-anchor="middle">Imperfective telic evidence</text>
+  <text class="t b" x="550" y="105" text-anchor="middle">Premise: “The carpenter was building a gazebo.”</text>
+  <text class="t b" x="550" y="135" text-anchor="middle">Hypothesis: “The carpenter built a gazebo.”</text>
+
+  <rect class="box" x="90" y="205" width="400" height="150" fill="#eef2ff"/>
+  <text class="t m" x="290" y="245" text-anchor="middle">Event-level semantic uncertainty</text>
+  <text class="t b" x="290" y="285" text-anchor="middle">Did the real-world endpoint occur?</text>
+  <text class="t m" x="290" y="325" text-anchor="middle">Under-specified</text>
+
+  <rect class="box" x="610" y="205" width="400" height="150" fill="#fff7ed"/>
+  <text class="t m" x="810" y="245" text-anchor="middle">Model-level predictive uncertainty</text>
+  <text class="t b" x="810" y="285" text-anchor="middle">How dispersed is belief over {T, F, U}?</text>
+  <text class="t m" x="810" y="325" text-anchor="middle">Distributional property</text>
+
+  <path class="arr" d="M550 150 L310 205"/><path class="arr" d="M550 150 L790 205"/>
+
+  <rect class="box" x="55" y="430" width="290" height="170" fill="#ecfdf5"/>
+  <text class="t m" x="200" y="470" text-anchor="middle">Desideratum</text>
+  <text class="t b" x="200" y="510" text-anchor="middle">P(U) ≫ P(T), P(F)</text>
+  <text class="t b" x="200" y="545" text-anchor="middle">confidently uncertain</text>
+
+  <rect class="box" x="405" y="430" width="290" height="170" fill="#fff1f2"/>
+  <text class="t m" x="550" y="470" text-anchor="middle">Teleological error</text>
+  <text class="t b" x="550" y="510" text-anchor="middle">P(T) ≫ P(U), P(F)</text>
+  <text class="t b" x="550" y="545" text-anchor="middle">false completion</text>
+
+  <rect class="box" x="755" y="430" width="290" height="170" fill="#fffbeb"/>
+  <text class="t m" x="900" y="470" text-anchor="middle">Predictive confusion</text>
+  <text class="t b" x="900" y="510" text-anchor="middle">P(T) ≈ P(U) ≈ P(F)</text>
+  <text class="t b" x="900" y="545" text-anchor="middle">high entropy</text>
+
+  <path class="arr" d="M290 355 L200 430"/><path class="arr" d="M810 355 L550 430"/><path class="arr" d="M810 355 L900 430"/>
+
+  <rect class="box" x="125" y="650" width="850" height="90" fill="#fdf2f8"/>
+  <text class="t m" x="550" y="685" text-anchor="middle">Group C has an uncertain world state but a determinate NLI target: Unknown.</text>
+  <text class="t b" x="550" y="720" text-anchor="middle">High predictive entropy is not the objective; calibrated P(Unknown) is.</text>
+</svg>
