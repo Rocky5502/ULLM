@@ -2,87 +2,71 @@
 
 Research artifact for an IASEAI'27 main-conference submission.
 
-ULLM studies a fundamental reliability question for large language models:
+ULLM studies a core reliability question for large language models:
 
-> When semantic interpretation is underdetermined, do LLMs represent uncertainty faithfully, does uncertainty align with actual errors, and can uncertainty signals support safer decision control?
+> When semantic interpretation is underdetermined, do LLMs represent uncertainty faithfully, does uncertainty align with actual failures, and can uncertainty signals support safer decision control?
 
-The project evaluates uncertainty representation beyond simple accuracy by connecting semantic ambiguity, confidence calibration, error awareness, and selective verification.
-
----
-
-## Research Overview
-
-Large language models often produce confident predictions in situations where the underlying world state is incomplete or ambiguous. ULLM investigates whether models distinguish:
-
-- uncertainty about the world state,
-- uncertainty about their own prediction,
-- and uncertainty useful for downstream decision making.
-
-The study uses controlled semantic reasoning tasks based on imperfective interpretation phenomena and evaluates frontier LLM systems under reproducible protocols.
-
-## Research Questions
-
-**RQ1 — Uncertainty Recognition**  
-Do LLMs recognize semantic under-specification and represent uncertainty appropriately?
-
-**RQ2 — Uncertainty Faithfulness**  
-Which uncertainty signals best identify model errors and overconfident failures?
-
-**RQ3 — Uncertainty-Aware Control**  
-Can uncertainty estimates enable selective verification and reduce risky predictions while maintaining useful coverage?
+The project investigates uncertainty as a reliability mechanism rather than only a confidence score. ULLM connects semantic ambiguity, uncertainty representation, calibration, error awareness, and selective verification.
 
 ---
 
-## Artifact Status
+## Overview
+
+Large language models increasingly operate in settings where the underlying world state may be incomplete, ambiguous, or difficult to determine. ULLM evaluates whether models can distinguish:
+
+- uncertainty about the world state;
+- uncertainty about their own prediction;
+- uncertainty that is useful for downstream risk control.
+
+The artifact provides the experimental protocol, analysis tools, validation scripts, and reproducibility infrastructure used for the study.
+
+---
+
+## Research Foundation
+
+ULLM is inspired by previous work on semantic interpretation in large language models, including **The Imperfective Paradox in Large Language Models**. Instead of reproducing that evaluation objective, ULLM focuses on uncertainty representation, calibration, and uncertainty-aware control.
+
+---
+
+## Artifact Components
 
 | Component | Status |
 |---|---|
-| Benchmark provenance | Frozen |
-| Experiment protocol | Frozen |
-| Request construction | Reproducible |
-| Offline rehearsal | Supported |
-| Audit pipeline | Released |
-| Analysis pipeline | Released |
-| Live empirical execution | Requires authorized model gateway |
-
-This repository intentionally separates engineering readiness from scientific evidence. Final empirical claims are generated only from audited frozen runs.
+| Benchmark protocol | Frozen |
+| Experiment configuration | Released |
+| Validation pipeline | Released |
+| Audit tools | Released |
+| Analysis scripts | Released |
+| Raw private model responses | Not included |
 
 ---
 
-## Models and Evaluation
+## Evaluation Pipeline
 
-The evaluation framework supports multiple routed LLM endpoints:
+ULLM evaluates uncertainty through:
 
-- GPT-5.6-sol
-- Claude Sonnet 5
-- Gemini 3.7 Flash
-- DeepSeek V4 Pro
-- Qwen 3.8 Max
+1. controlled semantic ambiguity;
+2. deterministic prediction analysis;
+3. repeated sampling consistency;
+4. robustness evaluation;
+5. selective verification.
 
-Model identifiers represent recorded gateway endpoints used during execution. Scientific conclusions are attached only to observed audited runs.
+The artifact preserves reproducibility information while excluding private credentials and restricted execution logs.
 
 ---
 
-## Experiment Design
+## Repository Structure
 
-The frozen evaluation protocol contains:
-
-- deterministic uncertainty estimation;
-- repeated sampling with K=5;
-- semantic robustness conditions;
-- label-order robustness testing;
-- verifier-based selective control analysis.
-
-The complete planned evaluation contains 15,800 main-study calls before retries:
-
-| Stage | Calls |
-|-|-:|
-| Neutral deterministic | 2,000 |
-| Neutral repeated sampling | 10,000 |
-| Strict logic robustness | 600 |
-| Definition-aware robustness | 600 |
-| Label-order robustness | 600 |
-| Verifier evaluation | 2,000 |
+```text
+ULLM/
+├── assets/        Research figures for documentation
+├── src/           Core implementation
+├── scripts/       Execution and analysis utilities
+├── configs/       Experiment configurations
+├── docs/          Protocol and reproducibility documents
+├── tests/         Automated validation
+└── results/       Generated local outputs
+```
 
 ---
 
@@ -91,62 +75,38 @@ The complete planned evaluation contains 15,800 main-study calls before retries:
 Install dependencies:
 
 ```bash
-python -m venv .venv
-.venv\\Scripts\\activate
 pip install -r requirements.txt
 ```
 
-Run validation:
+Validate installation:
 
 ```bash
 python scripts/validate_project.py
-python scripts/synthetic_pipeline_smoke.py
 pytest -q
 ```
 
-Run the complete offline rehearsal:
-
-```bash
-python scripts/offline_rehearsal.py
-```
-
-No API credentials are required for protocol verification and pipeline testing.
+The repository supports protocol verification and analysis without exposing API keys or private model credentials.
 
 ---
 
-## Repository Structure
+## Documentation Figures
 
-```
-ULLM/
-├── paper/          Manuscript sources and figures
-├── src/            Core experiment implementation
-├── configs/        Frozen experiment configurations
-├── scripts/        Execution, auditing, and analysis tools
-├── docs/           Protocol and reproducibility documentation
-├── tests/          Automated validation tests
-└── results/        Generated outputs (local artifacts)
-```
+### Motivation: semantic uncertainty and predictive uncertainty
+
+The first figure illustrates the distinction between uncertainty about the underlying event state and uncertainty in model prediction.
+
+### Evaluation framework
+
+The second figure presents the black-box evaluation pipeline, including protocol freezing, uncertainty measurement, robustness testing, and audit-controlled analysis.
 
 ---
 
-## Research Foundation
+## Data and License
 
-ULLM is informed by previous work on semantic interpretation and uncertainty evaluation in large language models, including **The Imperfective Paradox in Large Language Models**. ULLM extends this direction by focusing on uncertainty representation, calibration, and risk-aware control rather than reproducing the original evaluation objective.
+The repository uses the MIT License for original code. Third-party datasets and resources remain subject to their respective licenses. Raw API outputs and private execution artifacts are intentionally excluded.
 
 ---
 
 ## Citation
 
 If you use this artifact, please cite the associated IASEAI'27 paper after publication.
-
----
-
-## License and Data
-
-Code and documentation follow the repository license. Third-party benchmark resources remain subject to their original terms. Raw API responses and private execution artifacts are not committed by default.
-
----
-
-## Current Development Status
-
-The repository is prepared as a research artifact release: frozen protocols, reproducibility scripts, auditing tools, manuscript integration, and analysis infrastructure are maintained under version control.
