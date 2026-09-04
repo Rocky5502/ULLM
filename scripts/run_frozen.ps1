@@ -25,8 +25,16 @@ function Audit-Run {
     )
     $files = Get-ChildItem "results/raw/$RunId/$Pattern"
     if ($files.Count -eq 0) { throw "No outputs found for $RunId / $Pattern" }
-    python scripts/audit_run.py @($files.FullName) --manifest "results/raw/$RunId/manifest.json" --expected-k $ExpectedK --out $OutFile
-    if ($LASTEXITCODE -ne 0) { throw "Audit failed: $RunId" }
+    $manifest = "results/raw/$RunId/manifest.json"
+
+    python scripts/audit_run.py @($files.FullName) --manifest $manifest --expected-k $ExpectedK --out $OutFile
+    if ($LASTEXITCODE -ne 0) { throw "Scientific record audit failed: $RunId" }
+
+    python scripts/audit_completion_budget.py @($files.FullName)
+    if ($LASTEXITCODE -ne 0) { throw "Completion-budget audit failed: $RunId" }
+
+    python scripts/audit_model_controls.py @($files.FullName) --manifest $manifest
+    if ($LASTEXITCODE -ne 0) { throw "Model-control audit failed: $RunId" }
 }
 
 function Seal-Run {
@@ -50,20 +58,20 @@ python scripts/check_models.py
 if ($LASTEXITCODE -ne 0) { throw "Configured gateway model catalogue check failed" }
 
 Write-Host "No paid chat-completion calls have been made by this script yet."
-$smokeAnswer = Read-Host "Type SMOKE exactly to authorize the 100-call paid smoke test"
+$smokeAnswer = Read-Host "Type SMOKE exactly to authorize the 100-call paid v4 smoke test"
 if ($smokeAnswer -ne "SMOKE") { throw "Stopped before any paid completion call." }
 
-Write-Host "[3/12] Balanced smoke test: 20 examples x all five models"
-Invoke-ULLMRun -RunId "smoke-neutral-v1" -RunArgs @("--mode","deterministic","--prompt","neutral","--limit","20")
+Write-Host "[3/12] Balanced v4 smoke: 20 examples x all five models"
+Invoke-ULLMRun -RunId "smoke-neutral-v4" -RunArgs @("--mode","deterministic","--prompt","neutral","--limit","20")
 
-Write-Host "[4/12] Hard-audit and integrity-seal smoke outputs before authorizing the full paid study"
-Audit-Run -RunId "smoke-neutral-v1" -Pattern "*__deterministic__neutral.jsonl" -ExpectedK 1 -OutFile "results/processed/audit_smoke.json"
-Seal-Run -RunId "smoke-neutral-v1"
-$smoke = Get-ChildItem "results/raw/smoke-neutral-v1/*__deterministic__neutral.jsonl"
-python scripts/summarize_results.py @($smoke.FullName) --bins 15 --out results/processed/summary_smoke.csv
+Write-Host "[4/12] Hard-audit completion budget + model controls + integrity seal before full paid study"
+Audit-Run -RunId "smoke-neutral-v4" -Pattern "*__deterministic__neutral.jsonl" -ExpectedK 1 -OutFile "results/processed/audit_smoke_v4.json"
+Seal-Run -RunId "smoke-neutral-v4"
+$smoke = Get-ChildItem "results/raw/smoke-neutral-v4/*__deterministic__neutral.jsonl"
+python scripts/summarize_results.py @($smoke.FullName) --bins 15 --out results/processed/summary_smoke_v4.csv
 if ($LASTEXITCODE -ne 0) { throw "Smoke summary failed" }
 
-Write-Host "Smoke gate PASSED. Review the printed per-model rows, catalogue snapshot, and checksum manifest."
+Write-Host "V4 smoke gate PASSED. The DeepSeek non-thinking override was also verified from preserved responses."
 $answer = Read-Host "Type RUN exactly to authorize the remaining 15,800 main-study calls before retries"
 if ($answer -ne "RUN") { throw "Stopped after smoke and before the full paid run." }
 
@@ -107,4 +115,4 @@ if ($LASTEXITCODE -ne 0) { throw "Final tests failed" }
 python scripts/environment_snapshot.py
 if ($LASTEXITCODE -ne 0) { throw "Post-run environment snapshot failed" }
 
-Write-Host "DONE: frozen calls, audits, SHA-256 evidence manifests, analysis, figures, and manuscript tables completed."
+Write-Host "DONE: frozen calls, hard audits, SHA-256 evidence manifests, analysis, figures, and manuscript tables completed."

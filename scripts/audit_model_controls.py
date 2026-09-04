@@ -38,7 +38,7 @@ def main() -> None:
     p = argparse.ArgumentParser(
         description=(
             "Verify frozen model-specific request controls were recorded exactly and, "
-            "when thinking is disabled, that the gateway did not return reasoning content."
+            "when DeepSeek thinking is disabled, that the gateway did not return CoT."
         )
     )
     p.add_argument("paths", nargs="+", type=Path)
@@ -81,7 +81,7 @@ def main() -> None:
         )
     for file_name, example_id in reasoning_violations[:50]:
         print(
-            "FAIL thinking-disabled route returned reasoning_content "
+            f"FAIL thinking-disabled route returned reasoning_content "
             f"file={file_name} example={example_id}"
         )
 

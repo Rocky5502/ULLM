@@ -5,7 +5,12 @@ import json
 from scripts.audit_run import audit_file
 
 
-def row(*, normalization_delta: float = 0.0, reason: str = "one sentence") -> dict:
+def row(
+    *,
+    normalization_delta: float = 0.0,
+    reason: str = "one sentence",
+    argmax_consistent: bool = True,
+) -> dict:
     return {
         "model_requested": "m",
         "model_returned": "m",
@@ -19,10 +24,12 @@ def row(*, normalization_delta: float = 0.0, reason: str = "one sentence") -> di
         "example": {"id": "C_001"},
         "prediction": {
             "label": "Unknown",
-            "probabilities": {"True": 0.1, "False": 0.1, "Unknown": 0.8},
+            "probabilities": {"True": 0.55, "False": 0.05, "Unknown": 0.40}
+            if not argmax_consistent
+            else {"True": 0.1, "False": 0.1, "Unknown": 0.8},
             "reason_short": reason,
             "normalization_delta": normalization_delta,
-            "argmax_consistent": True,
+            "argmax_consistent": argmax_consistent,
         },
         "request_error": None,
         "parse_error": None,
@@ -59,6 +66,30 @@ def test_valid_row_passes(tmp_path):
     report = audit_file(path, expected_k=1, manifest=manifest())
     assert report["status"] == "PASS"
     assert report["retry_rows"] == 0
+
+
+def test_argmax_inconsistency_still_fails_under_strict_policy(tmp_path):
+    path = tmp_path / "run.jsonl"
+    write(path, row(argmax_consistent=False))
+    report = audit_file(path, expected_k=1, manifest=manifest())
+    assert report["status"] == "FAIL"
+    assert report["argmax_inconsistencies"] == 1
+    assert report["argmax_inconsistency_policy"] == "strict-fail"
+
+
+def test_argmax_inconsistency_can_be_preserved_as_observed_behavior(tmp_path):
+    path = tmp_path / "run.jsonl"
+    write(path, row(argmax_consistent=False))
+    report = audit_file(
+        path,
+        expected_k=1,
+        manifest=manifest(),
+        allow_argmax_inconsistency=True,
+    )
+    assert report["status"] == "PASS"
+    assert report["argmax_inconsistencies"] == 1
+    assert report["argmax_inconsistency_policy"] == "preserve-and-warn"
+    assert any("preserved as observed" in msg for msg in report["warnings"])
 
 
 def test_large_probability_sum_deviation_is_failure(tmp_path):

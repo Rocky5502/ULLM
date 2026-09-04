@@ -36,7 +36,7 @@ class OpenAICompatibleClient:
         base_url: str | None = None,
         timeout_s: float = 120,
         max_retries: int = 5,
-        user_agent: str = "ULLM-research/0.3",
+        user_agent: str = "ULLM-research/0.4",
     ) -> None:
         self.api_key = api_key or os.getenv("ZZZ_API_KEY")
         self.base_url = (
@@ -71,6 +71,7 @@ class OpenAICompatibleClient:
         temperature: float = 0.0,
         max_tokens: int = 300,
         seed: int | None = None,
+        request_overrides: dict[str, Any] | None = None,
     ) -> ChatResult:
         payload: dict[str, Any] = {
             "model": model,
@@ -80,6 +81,19 @@ class OpenAICompatibleClient:
         }
         if seed is not None:
             payload["seed"] = seed
+
+        # Model-specific compatibility controls are frozen in experiment.yaml and
+        # recorded in every request artifact. They may add provider-supported fields
+        # (for example DeepSeek's `thinking` toggle), but may never silently replace
+        # the common scientific controls above.
+        if request_overrides:
+            collisions = sorted(set(request_overrides) & set(payload))
+            if collisions:
+                raise ValueError(
+                    "request_overrides may not replace common request fields: "
+                    + ", ".join(collisions)
+                )
+            payload.update(request_overrides)
 
         url = f"{self.base_url}/chat/completions"
         for attempt in range(self.max_retries + 1):

@@ -59,35 +59,35 @@ python scripts/analyze_contract_consistency.py @($det.FullName) `
 if ($LASTEXITCODE -ne 0) { throw "Stage-5 contract consistency analysis failed" }
 
 Write-Host "Stage 5 is preserved exactly as collected. No selective retry/relabel/repair was performed."
-$answer = Read-Host "Type CONTINUE exactly to authorize the remaining planned main-study calls before retries"
+$answer = Read-Host "Type CONTINUE exactly to authorize the remaining 13,800 planned main-study calls before retries"
 if ($answer -ne "CONTINUE") { throw "Stopped after Stage-5 adjudication and before any Stage-6 call." }
 
-Write-Host "[A2/8] Stage 6: full neutral repeated sampling"
+Write-Host "[A2/8] Stage 6: full neutral repeated sampling — 10,000 calls before retries"
 Invoke-ULLMRun -RunId "frozen-sampling-neutral-v1" -RunArgs @("--mode","sampling","--prompt","neutral")
 Audit-Run-A1 -RunId "frozen-sampling-neutral-v1" -Pattern "*__sampling__neutral.jsonl" -ExpectedK 5 -OutFile "results/processed/audit_sampling.json"
 Seal-Run -RunId "frozen-sampling-neutral-v1"
 
-Write-Host "[A3/8] Stage 7: strict-logic robustness"
+Write-Host "[A3/8] Stage 7: strict-logic robustness — 600 calls"
 Invoke-ULLMRun -RunId "robust-strict-v1" -RunArgs @("--mode","deterministic","--prompt","strict_logic","--limit","120")
 Audit-Run-A1 -RunId "robust-strict-v1" -Pattern "*__deterministic__strict_logic.jsonl" -ExpectedK 1 -OutFile "results/processed/audit_strict.json"
 Seal-Run -RunId "robust-strict-v1"
 
-Write-Host "[A4/8] Stage 8: definition-aware robustness"
+Write-Host "[A4/8] Stage 8: definition-aware robustness — 600 calls"
 Invoke-ULLMRun -RunId "robust-definition-v1" -RunArgs @("--mode","deterministic","--prompt","definition_aware","--limit","120")
 Audit-Run-A1 -RunId "robust-definition-v1" -Pattern "*__deterministic__definition_aware.jsonl" -ExpectedK 1 -OutFile "results/processed/audit_definition.json"
 Seal-Run -RunId "robust-definition-v1"
 
-Write-Host "[A5/8] Stage 9: reversed label-order robustness"
+Write-Host "[A5/8] Stage 9: reversed label-order robustness — 600 calls"
 Invoke-ULLMRun -RunId "robust-label-order-v1" -RunArgs @("--mode","deterministic","--prompt","neutral","--label-order","Unknown,False,True","--limit","120")
 Audit-Run-A1 -RunId "robust-label-order-v1" -Pattern "*__deterministic__neutral.jsonl" -ExpectedK 1 -OutFile "results/processed/audit_label_order.json"
 Seal-Run -RunId "robust-label-order-v1"
 
-Write-Host "[A6/8] Stage 10: full cached aspect-sensitive verifier"
+Write-Host "[A6/8] Stage 10: full cached aspect-sensitive verifier — 2,000 calls"
 Invoke-ULLMRun -RunId "frozen-verifier-v1" -RunArgs @("--mode","deterministic","--prompt","verifier")
 Audit-Run-A1 -RunId "frozen-verifier-v1" -Pattern "*__deterministic__verifier.jsonl" -ExpectedK 1 -OutFile "results/processed/audit_verifier.json"
 Seal-Run -RunId "frozen-verifier-v1"
 
-Write-Host "[A7/8] Frozen empirical analyses, diagnostics, figures, and tables"
+Write-Host "[A7/8] Frozen empirical analyses, contract-consistency diagnostics, figures, and tables"
 & "$PSScriptRoot/analyze_frozen.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Analysis pipeline failed" }
 
@@ -97,4 +97,4 @@ if ($LASTEXITCODE -ne 0) { throw "Final tests failed" }
 python scripts/environment_snapshot.py
 if ($LASTEXITCODE -ne 0) { throw "Post-run environment snapshot failed" }
 
-Write-Host "DONE: preserved scientific records, audits, checksums, analysis, figures, and tables completed."
+Write-Host "DONE: Stage 5 preserved under adjudication A1; remaining frozen runs, audits, checksums, analysis, figures, and tables completed."

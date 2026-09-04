@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +19,8 @@ def load_rows(path: Path) -> list[dict[str, Any]]:
 
 
 def argmax_label(probabilities: dict[str, float]) -> str:
+    # Stable canonical order only matters for exact probability ties. The mismatch
+    # diagnostic treats a stated label as consistent when it is one of the maxima.
     return max(("True", "False", "Unknown"), key=lambda k: float(probabilities[k]))
 
 
@@ -42,7 +44,8 @@ def analyze(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         stated = str(pred["label"])
         max_p = max(probs.values())
         max_labels = [k for k, v in probs.items() if abs(v - max_p) <= 1e-12]
-        if stated in max_labels:
+        consistent = stated in max_labels
+        if consistent:
             continue
 
         canonical_argmax = argmax_label(probs)
@@ -95,8 +98,9 @@ def analyze(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
 def main() -> None:
     p = argparse.ArgumentParser(
         description=(
-            "Quantify schema-valid disagreement between a stated discrete label and "
-            "its probability argmax without repairing or deleting responses."
+            "Quantify schema-valid disagreement between the model's stated discrete label "
+            "and its own probability argmax. This is an exploratory faithfulness diagnostic; "
+            "it never repairs, relabels, deletes, or retries preserved responses."
         )
     )
     p.add_argument("paths", nargs="+", type=Path)
