@@ -1,17 +1,27 @@
+# Credentials and local environments
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 .venv/
+venv/
+
+# Python caches and test state
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.coverage
+htmlcov/
 
-# Third-party benchmark is fetched locally and must not be accidentally relicensed/committed.
+# Third-party benchmark bytes are fetched locally and must not be redistributed here.
 data/imperfectiveNLI.json
 data/MANIFEST.local.json
 data/dataset_manifest.json
 
-# Frozen API artifacts can be large and may contain provider-returned text.
+# API/model outputs can be large and may contain provider-returned text.
 results/raw/**
 results/processed/**
 results/figures/**
@@ -20,19 +30,24 @@ results/figures/**
 !results/figures/.gitkeep
 !results/README.md
 
-# Local pre-API rehearsal/freeze snapshots.
+# Local rehearsal, provenance, and environment snapshots.
 artifacts/local/**
 
-# LaTeX build products.
-paper/*.aux
-paper/*.bbl
-paper/*.blg
-paper/*.fdb_latexmk
-paper/*.fls
-paper/*.log
-paper/*.out
-paper/*.pdf
-paper/*.synctex.gz
+# Local manuscript/build/archive artifacts are outside this code repository.
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.pdf
+*.zip
+*.7z
 
+# Editor/OS files
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
