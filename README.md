@@ -45,6 +45,18 @@ The frozen study uses the 400-example ImperfectiveNLI benchmark, a neutral prima
 - resume-safe execution, checksums, completion-budget auditing, model-control auditing, and decision/distribution consistency diagnostics;
 - zero-API synthetic and full request-plan rehearsals for reproducibility testing.
 
+## Frozen routed model panel
+
+| Family | Gateway routing ID |
+|---|---|
+| OpenAI | `gpt-5.6-sol` |
+| Anthropic | `claude-sonnet-5` |
+| DeepSeek | `deepseek-v4-pro` |
+| Alibaba–Qwen | `qwen3.8-max` |
+| Google | `gemini-3.7-flash` |
+
+These strings are recorded **gateway routing identifiers**, not claims about immutable vendor-direct checkpoints. Live runs record both the requested and returned model IDs so scientific conclusions remain tied to the observed routed endpoints.
+
 ## Repository layout
 
 ```text
