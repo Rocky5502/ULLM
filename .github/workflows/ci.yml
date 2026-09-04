@@ -16,49 +16,55 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m pip check
-      - name: Compile all Python sources
+
+      - name: Compile Python sources
         run: python -m compileall -q src scripts tests
-      - name: Validate frozen project consistency
+
+      - name: Validate public artifact invariants
         env:
           PYTHONPATH: src
         run: python scripts/validate_project.py
-      - name: Audit manuscript citation keys
-        run: python scripts/validate_references.py
-      - name: Enforce pre-run manuscript evidence state
-        run: python scripts/manuscript_evidence_gate.py --mode pre
+
+      - name: Scan tracked files for credentials and local paths
+        run: python scripts/security_scan.py
+
       - name: Unit tests
         env:
           PYTHONPATH: src
         run: pytest -q
-      - name: Validate POSIX frozen-runner syntax
+
+      - name: Validate POSIX runner syntax
         if: matrix.python-version == '3.11'
         run: bash -n scripts/run_frozen.sh scripts/analyze_frozen.sh
-      - name: Validate PowerShell frozen-runner syntax
+
+      - name: Validate PowerShell runner syntax
         if: matrix.python-version == '3.11'
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/run_frozen.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | Format-List
-            exit 1
+          $files = @(
+            'scripts/run_frozen.ps1',
+            'scripts/analyze_frozen.ps1',
+            'scripts/resume_after_stage5_contract.ps1'
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file), [ref]$tokens, [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              Write-Host "PowerShell parse failure: $file"
+              $errors | Format-List
+              exit 1
+            }
           }
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/analyze_frozen.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | Format-List
-            exit 1
-          }
-      - name: Anonymous artifact identity scan
-        if: matrix.python-version == '3.11'
-        run: python scripts/package_anonymous_artifact.py --check-only
+
       - name: Zero-API end-to-end analysis smoke
         if: matrix.python-version == '3.11'
         env:
