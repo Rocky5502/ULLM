@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">ULLM audited black-box evaluation pipeline</title>
+  <desc id="desc">Pipeline from ImperfectiveNLI through routed LLM endpoints, uncertainty analyses, robustness, paired semantics and audit gates to reproducible outputs.</desc>
+  <defs>
+    <style>.t{font-family:Arial,Helvetica,sans-serif;fill:#172033}.h{font-size:23px;font-weight:700}.b{font-size:17px}.s{font-size:15px}.box{stroke:#64748b;stroke-width:2;rx:12}.arr{stroke:#64748b;stroke-width:2.2;fill:none;marker-end:url(#a)}</style>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#64748b"/></marker>
+  </defs>
+  <rect width="1200" height="760" fill="#fff"/>
+
+  <rect class="box" x="55" y="45" width="285" height="110" fill="#eef2ff"/>
+  <text class="t h" x="198" y="80" text-anchor="middle">ImperfectiveNLI</text>
+  <text class="t b" x="198" y="112" text-anchor="middle">400 examples</text>
+  <text class="t b" x="198" y="140" text-anchor="middle">A/B/C/D semantic pairs</text>
+
+  <rect class="box" x="455" y="45" width="290" height="110" fill="#f8fafc"/>
+  <text class="t h" x="600" y="80" text-anchor="middle">Five routed LLM endpoints</text>
+  <text class="t b" x="600" y="112" text-anchor="middle">same gateway contract</text>
+  <text class="t b" x="600" y="140" text-anchor="middle">requested + returned IDs recorded</text>
+
+  <rect class="box" x="860" y="45" width="285" height="110" fill="#fff7ed"/>
+  <text class="t h" x="1002" y="80" text-anchor="middle">Neutral primary inference</text>
+  <text class="t b" x="1002" y="112" text-anchor="middle">P(T), P(F), P(U), T = 0</text>
+  <text class="t b" x="1002" y="140" text-anchor="middle">raw record + manifest</text>
+
+  <path class="arr" d="M340 100 L455 100"/><path class="arr" d="M745 100 L860 100"/>
+
+  <rect class="box" x="55" y="260" width="300" height="150" fill="#fff1f2"/>
+  <text class="t h" x="205" y="300" text-anchor="middle">Recognition</text>
+  <text class="t b" x="205" y="335" text-anchor="middle">accuracy · SUR · TOR · ADG</text>
+  <text class="t b" x="205" y="365" text-anchor="middle">Brier · NLL · ECE</text>
+
+  <rect class="box" x="450" y="260" width="300" height="150" fill="#fffbeb"/>
+  <text class="t h" x="600" y="300" text-anchor="middle">Faithfulness</text>
+  <text class="t b" x="600" y="335" text-anchor="middle">K = 5 sampling</text>
+  <text class="t b" x="600" y="365" text-anchor="middle">variation ratio · label entropy</text>
+  <text class="t b" x="600" y="395" text-anchor="middle">error AUROC · AUPRC</text>
+
+  <rect class="box" x="845" y="260" width="300" height="150" fill="#ecfdf5"/>
+  <text class="t h" x="995" y="300" text-anchor="middle">Risk-aware control</text>
+  <text class="t b" x="995" y="335" text-anchor="middle">risk–coverage</text>
+  <text class="t b" x="995" y="365" text-anchor="middle">selective cached verifier</text>
+  <text class="t b" x="995" y="395" text-anchor="middle">TBR + Group-D retention + cost</text>
+
+  <path class="arr" d="M1002 155 L205 260"/><path class="arr" d="M1002 155 L600 260"/><path class="arr" d="M1002 155 L995 260"/>
+
+  <rect class="box" x="55" y="500" width="300" height="120" fill="#fff1f2"/>
+  <text class="t h" x="205" y="538" text-anchor="middle">Fixed robustness</text>
+  <text class="t b" x="205" y="573" text-anchor="middle">strict · definition-aware</text>
+  <text class="t b" x="205" y="601" text-anchor="middle">reversed label order</text>
+
+  <rect class="box" x="450" y="500" width="300" height="120" fill="#eef2ff"/>
+  <text class="t h" x="600" y="538" text-anchor="middle">Paired semantics</text>
+  <text class="t b" x="600" y="573" text-anchor="middle">A↔C probability updates</text>
+  <text class="t b" x="600" y="601" text-anchor="middle">B↔D invariance</text>
+
+  <rect class="box" x="845" y="500" width="300" height="120" fill="#f8fafc"/>
+  <text class="t h" x="995" y="538" text-anchor="middle">Audit gate</text>
+  <text class="t b" x="995" y="573" text-anchor="middle">hashes · errors · K</text>
+  <text class="t b" x="995" y="601" text-anchor="middle">model IDs · controls</text>
+
+  <path class="arr" d="M205 410 L205 500"/><path class="arr" d="M600 410 L600 500"/><path class="arr" d="M995 410 L995 500"/>
+
+  <rect class="box" x="220" y="680" width="760" height="60" fill="#f1f5f9"/>
+  <text class="t h" x="600" y="716" text-anchor="middle">Verb-cluster CIs → processed artifacts → vector figures and reproducible summaries</text>
+  <path class="arr" d="M205 620 L420 680"/><path class="arr" d="M600 620 L600 680"/><path class="arr" d="M995 620 L780 680"/>
+</svg>
