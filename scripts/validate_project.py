@@ -16,13 +16,8 @@ if str(SRC) not in sys.path:
 
 from ullm.prompts import PROMPTS  # noqa: E402
 
-STALE_TOKENS = (
-    "gpt-5.4",
-    "llama-4-maverick",
-    "primary_protocol",
-    "protocols: [strict, bare]",
-)
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
+STALE_TOKENS = ("gpt-5.4", "llama-4-maverick", "primary_protocol")
 
 
 def fail(message: str, errors: list[str]) -> None:
@@ -30,13 +25,12 @@ def fail(message: str, errors: list[str]) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description="Validate the public ULLM code artifact.")
     p.add_argument("--config", type=Path, default=Path("configs/experiment.yaml"))
     p.add_argument("--models", type=Path, default=Path("configs/models.yaml"))
     p.add_argument(
         "--hypotheses", type=Path, default=Path("configs/preregistered_hypotheses.yaml")
     )
-    p.add_argument("--paper", type=Path, default=Path("paper/main.tex"))
     p.add_argument("--readme", type=Path, default=Path("README.md"))
     args = p.parse_args()
 
@@ -45,28 +39,41 @@ def main() -> None:
         args.config,
         args.models,
         args.hypotheses,
-        args.paper,
         args.readme,
+        Path("LICENSE"),
+        Path("CITATION.cff"),
         Path("requirements.txt"),
         Path("requirements-frozen.txt"),
+        Path("pyproject.toml"),
         Path("data/MANIFEST.json"),
         Path("data/THIRD_PARTY_DATA.md"),
         Path("scripts/fetch_imperfective_nli.py"),
         Path("scripts/validate_dataset.py"),
         Path("scripts/preflight.py"),
         Path("scripts/audit_request_plan.py"),
+        Path("scripts/audit_run.py"),
+        Path("scripts/audit_completion_budget.py"),
+        Path("scripts/audit_model_controls.py"),
+        Path("scripts/analyze_contract_consistency.py"),
         Path("scripts/offline_rehearsal.py"),
-        Path("docs/PROGRESS_LOG.md"),
-        Path("docs/LOCAL_RUNBOOK.md"),
+        Path("scripts/security_scan.py"),
+        Path("docs/EXPERIMENT_PROTOCOL.md"),
+        Path("docs/ANALYSIS_PLAN.md"),
         Path("docs/REPRODUCIBILITY.md"),
+        Path("docs/ARTIFACT_GUIDE.md"),
+        Path("assets/semantic-uncertainty-distinction.svg"),
+        Path("assets/audited-evaluation-pipeline.svg"),
         Path(".github/workflows/ci.yml"),
         Path(".github/workflows/dataset-integrity.yml"),
-        Path(".github/workflows/paper.yml"),
         Path(".gitignore"),
     ]
     for path in required_paths:
         if not path.exists():
-            fail(f"missing required file: {path}", errors)
+            fail(f"missing required artifact file: {path}", errors)
+
+    if Path("paper").exists():
+        fail("public code artifact must not contain the manuscript source directory 'paper/'", errors)
+
     if errors:
         for e in errors:
             print(f"FAIL: {e}")
@@ -75,7 +82,6 @@ def main() -> None:
     config = yaml.safe_load(args.config.read_text(encoding="utf-8"))
     models_cfg = yaml.safe_load(args.models.read_text(encoding="utf-8"))
     hypotheses_cfg = yaml.safe_load(args.hypotheses.read_text(encoding="utf-8"))
-    paper = args.paper.read_text(encoding="utf-8")
     readme = args.readme.read_text(encoding="utf-8")
     gitignore = Path(".gitignore").read_text(encoding="utf-8")
     run_source = Path("src/ullm/run.py").read_text(encoding="utf-8")
@@ -83,23 +89,10 @@ def main() -> None:
     data_manifest = json.loads(Path("data/MANIFEST.json").read_text(encoding="utf-8"))
 
     required_config = {
-        "seed",
-        "base_url",
-        "input_file",
-        "output_dir",
-        "max_concurrency",
-        "request_timeout_s",
-        "max_retries",
-        "max_tokens",
-        "primary_prompt",
-        "prompt_robustness",
-        "label_order_robustness",
-        "verifier",
-        "deterministic",
-        "sampling",
-        "selective",
-        "statistics",
-        "labels",
+        "seed", "base_url", "input_file", "output_dir", "max_concurrency",
+        "request_timeout_s", "max_retries", "max_tokens", "primary_prompt",
+        "prompt_robustness", "label_order_robustness", "verifier", "deterministic",
+        "sampling", "selective", "statistics", "labels",
     }
     missing_config = sorted(required_config - set(config))
     if missing_config:
@@ -110,21 +103,16 @@ def main() -> None:
         fail(f"labels must be exactly [True, False, Unknown], found {labels}", errors)
 
     primary = config.get("primary_prompt")
-    if primary != "neutral":
-        fail(f"primary_prompt must remain neutral before frozen run, found {primary!r}", errors)
-    if primary not in PROMPTS:
-        fail(f"unknown primary prompt: {primary!r}", errors)
+    if primary != "neutral" or primary not in PROMPTS:
+        fail(f"primary_prompt must be the registered neutral prompt, found {primary!r}", errors)
 
     robust = config.get("prompt_robustness", {})
     n_robust = int(robust.get("n_examples", 0))
+    robust_prompts = list(robust.get("prompt_types", []))
     if n_robust <= 0 or n_robust % 4 != 0:
         fail("prompt_robustness.n_examples must be positive and divisible by four", errors)
-    robust_prompts = list(robust.get("prompt_types", []))
     if robust_prompts != ["strict_logic", "definition_aware"]:
-        fail(
-            "prompt robustness must remain [strict_logic, definition_aware] before results",
-            errors,
-        )
+        fail("prompt robustness must remain [strict_logic, definition_aware]", errors)
     for prompt in robust_prompts:
         if prompt not in PROMPTS:
             fail(f"unknown robustness prompt: {prompt}", errors)
@@ -162,42 +150,18 @@ def main() -> None:
     if len(set(families)) != 5:
         fail(f"expected five distinct model families, found {families}", errors)
     for model_id in ids:
-        if model_id not in paper:
-            fail(f"configured model ID missing from manuscript: {model_id}", errors)
         if model_id not in readme:
             fail(f"configured model ID missing from README: {model_id}", errors)
-
     for token in STALE_TOKENS:
-        if token in paper or token in readme:
-            fail(f"stale pre-freeze token still present in paper/README: {token}", errors)
+        if token in readme:
+            fail(f"stale token still present in README: {token}", errors)
 
     hypotheses = hypotheses_cfg.get("hypotheses", {})
     if len(hypotheses) != 4:
-        fail(
-            f"expected four directional hypotheses H1-H4 in preregistration, found {len(hypotheses)}",
-            errors,
-        )
+        fail(f"expected four preregistered hypotheses H1-H4, found {len(hypotheses)}", errors)
     rqs = {str(row.get("rq")) for row in hypotheses.values()}
     if rqs != {"RQ1", "RQ2", "RQ3"}:
         fail(f"hypotheses must cover exactly RQ1/RQ2/RQ3, found {sorted(rqs)}", errors)
-    if (
-        paper.count("\\paragraph{RQ1:") != 1
-        or paper.count("\\paragraph{RQ2:") != 1
-        or paper.count("\\paragraph{RQ3:") != 1
-    ):
-        fail(
-            "manuscript must contain exactly one paragraph definition for each RQ1/RQ2/RQ3",
-            errors,
-        )
-
-    required_generated = [
-        Path("paper/generated/rq1_table.tex"),
-        Path("paper/generated/rq2_table.tex"),
-        Path("paper/generated/rq3_table.tex"),
-    ]
-    for path in required_generated:
-        if not path.exists():
-            fail(f"missing generated-table placeholder: {path}", errors)
 
     call_budget = (
         len(ids) * 400 * int(config["deterministic"]["samples_per_item"])
@@ -209,7 +173,6 @@ def main() -> None:
     if call_budget != 15800:
         fail(f"frozen main-study call budget drifted from 15,800 to {call_budget}", errors)
 
-    # Machine-verifiable third-party provenance must be immutable and self-consistent.
     source_commit = str(data_manifest.get("source_commit", ""))
     source_blob = str(data_manifest.get("upstream_git_blob_sha1", ""))
     raw_url = str(data_manifest.get("source_raw_url", ""))
@@ -224,20 +187,15 @@ def main() -> None:
     if int(data_manifest.get("expected_bytes", -1)) != 100970:
         fail("data/MANIFEST.json expected byte count drifted from 100970", errors)
 
-    # Prevent accidental publication/relicensing of local/raw artifacts.
     required_ignore_tokens = (
-        "data/imperfectiveNLI.json",
-        "data/MANIFEST.local.json",
-        "data/dataset_manifest.json",
-        "results/raw/**",
-        "results/processed/**",
-        "artifacts/local/**",
+        ".env", ".venv/", "data/imperfectiveNLI.json", "data/MANIFEST.local.json",
+        "data/dataset_manifest.json", "results/raw/**", "results/processed/**",
+        "results/figures/**", "artifacts/local/**",
     )
     for token in required_ignore_tokens:
         if token not in gitignore:
-            fail(f".gitignore missing required research-artifact safeguard: {token}", errors)
+            fail(f".gitignore missing artifact/privacy safeguard: {token}", errors)
 
-    # The runner must retain a truly offline request construction path.
     for token in ("--dry-run", "execution_mode", "write_request_plan"):
         if token not in run_source:
             fail(f"runner missing zero-API rehearsal invariant: {token}", errors)
@@ -255,8 +213,7 @@ def main() -> None:
         "main_call_budget": call_budget,
         "dataset_source_commit": source_commit,
         "dataset_git_blob": source_blob,
-        "offline_rehearsal": "present" if Path("scripts/offline_rehearsal.py").exists() else "missing",
-        "progress_ledger": "present" if Path("docs/PROGRESS_LOG.md").exists() else "missing",
+        "paper_source_in_public_artifact": Path("paper").exists(),
         "errors": errors,
     }
     print(json.dumps(payload, indent=2))
