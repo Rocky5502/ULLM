@@ -1,7 +1,6 @@
 # Credentials and local environments
 .env
 .env.*
-!.env.example
 *.pem
 *.key
 *.p12
