@@ -108,9 +108,9 @@ The complete offline rehearsal constructs and audits the planned 15,800-request 
 
 Live execution is deliberately opt-in. Credentials are read only from the local environment; no credential value is written into manifests, environment snapshots, or committed files.
 
-- Never commit a populated `.env` file.
+- Never commit `.env`, API-key files, private keys, or machine-local credential stores.
 - Never place API keys in configs, scripts, notebooks, issues, or result files.
-- `.env.example` contains placeholders only.
+- Set the required gateway credential only in your local shell or secure secret manager at execution time.
 - Raw provider responses and local execution evidence are excluded from version control by default.
 
 Before sharing a checkout, run:
@@ -118,6 +118,8 @@ Before sharing a checkout, run:
 ```bash
 python scripts/security_scan.py
 ```
+
+The CI pipeline runs the same tracked-file credential and local-path scan on every push and pull request.
 
 ## Data and publication boundary
 
