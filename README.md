@@ -1,112 +1,140 @@
-# ULLM: Uncertainty Understanding in Large Language Models
+# ULLM — The Imperfective Uncertainty in Large Language Models
 
-Research artifact for an IASEAI'27 main-conference submission.
+[![CI](https://github.com/Rocky5502/ULLM/actions/workflows/ci.yml/badge.svg)](https://github.com/Rocky5502/ULLM/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-ULLM studies a core reliability question for large language models:
+ULLM is a reproducible black-box evaluation framework for studying **semantic uncertainty**, **predictive uncertainty**, and **uncertainty-aware control** in large language models.
 
-> When semantic interpretation is underdetermined, do LLMs represent uncertainty faithfully, does uncertainty align with actual failures, and can uncertainty signals support safer decision control?
+The central question is simple: when the underlying world state is genuinely under-specified, does a model represent that uncertainty correctly, do its uncertainty signals track its own failures, and can those signals support safer decisions?
 
-The project investigates uncertainty as a reliability mechanism rather than only a confidence score. ULLM connects semantic ambiguity, uncertainty representation, calibration, error awareness, and selective verification.
+## Why this matters
 
----
+A model can be uncertain for very different reasons. In the critical imperfective telic setting, the event outcome may be unknown while the correct NLI relation is determinately **Unknown**. A reliable model should therefore assign high probability to the `Unknown` relation. Diffuse probabilities alone are not sufficient: high predictive entropy can reflect confusion rather than correct semantic uncertainty.
 
-## Overview
+<p align="center">
+  <img src="assets/semantic-uncertainty-distinction.svg" alt="Semantic uncertainty versus predictive uncertainty" width="820"/>
+</p>
 
-Large language models increasingly operate in settings where the underlying world state may be incomplete, ambiguous, or difficult to determine. ULLM evaluates whether models can distinguish:
+<p align="center"><em>Figure 1. Semantic uncertainty and predictive uncertainty are different objects. Correct behavior is calibrated confidence in the <code>Unknown</code> relation, not indiscriminate distributional uncertainty.</em></p>
 
-- uncertainty about the world state;
-- uncertainty about their own prediction;
-- uncertainty that is useful for downstream risk control.
+## What ULLM evaluates
 
-The artifact provides the experimental protocol, analysis tools, validation scripts, and reproducibility infrastructure used for the study.
+ULLM organizes the study around three reliability questions:
 
----
+- **Recognition:** whether routed LLM endpoints distinguish semantic under-specification from determinate entailment or contradiction.
+- **Faithfulness:** whether verbalized probability uncertainty and repeated-sampling disagreement identify actual model failures.
+- **Control:** whether uncertainty can support selective defer/recheck policies without unnecessarily degrading valid predictions.
 
-## Research Foundation
+The frozen study uses the 400-example ImperfectiveNLI benchmark, a neutral primary prompt, deterministic structured `P(True)`, `P(False)`, `P(Unknown)` predictions, `K=5` repeated sampling, fixed prompt/order robustness conditions, and an independently cached verifier.
 
-ULLM is inspired by previous work on semantic interpretation in large language models, including **The Imperfective Paradox in Large Language Models**. Instead of reproducing that evaluation objective, ULLM focuses on uncertainty representation, calibration, and uncertainty-aware control.
+<p align="center">
+  <img src="assets/audited-evaluation-pipeline.svg" alt="ULLM audited evaluation pipeline" width="900"/>
+</p>
 
----
+<p align="center"><em>Figure 2. Audited black-box evaluation pipeline. Request metadata, manifests, model identifiers, controls, and audit evidence are preserved before aggregate analyses are produced.</em></p>
 
-## Artifact Components
+## Core capabilities
 
-| Component | Status |
-|---|---|
-| Benchmark protocol | Frozen |
-| Experiment configuration | Released |
-| Validation pipeline | Released |
-| Audit tools | Released |
-| Analysis scripts | Released |
-| Raw private model responses | Not included |
+- five-family routed model panel with requested/returned model identifiers recorded per response;
+- immutable benchmark provenance and validation;
+- deterministic and repeated-sampling uncertainty analysis;
+- calibration, Brier/NLL, entropy, variation-ratio, AUROC/AUPRC, AURC/E-AURC, paired semantic and risk-coverage metrics;
+- fixed robustness conditions and label-order controls;
+- selective cached-verifier analysis;
+- verb-cluster bootstrap confidence intervals and Holm correction;
+- resume-safe execution, checksums, completion-budget auditing, model-control auditing, and decision/distribution consistency diagnostics;
+- zero-API synthetic and full request-plan rehearsals for reproducibility testing.
 
----
-
-## Evaluation Pipeline
-
-ULLM evaluates uncertainty through:
-
-1. controlled semantic ambiguity;
-2. deterministic prediction analysis;
-3. repeated sampling consistency;
-4. robustness evaluation;
-5. selective verification.
-
-The artifact preserves reproducibility information while excluding private credentials and restricted execution logs.
-
----
-
-## Repository Structure
+## Repository layout
 
 ```text
 ULLM/
-├── assets/        Research figures for documentation
-├── src/           Core implementation
-├── scripts/       Execution and analysis utilities
-├── configs/       Experiment configurations
-├── docs/          Protocol and reproducibility documents
-├── tests/         Automated validation
-└── results/       Generated local outputs
+├── assets/      README research figures
+├── configs/     Frozen experiment and model configuration
+├── data/        Provenance metadata and benchmark fetch/validation tools
+├── docs/        Protocol, analysis, artifact, and reproducibility documentation
+├── results/     Local output locations; raw/processed empirical artifacts are ignored
+├── scripts/     Execution, auditing, statistics, figure/table, and packaging utilities
+├── src/ullm/    Core client, prompts, parsing, metrics, statistics, and runner
+└── tests/       Unit and provenance/audit tests
 ```
 
----
+The manuscript source is intentionally maintained outside this public code artifact.
 
-## Reproducibility
+## Quick start
 
-Install dependencies:
+Python 3.10–3.12 is supported; the frozen reference environment uses Python 3.11.
 
 ```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Validate installation:
+Fetch and validate the benchmark from its pinned upstream revision:
+
+```bash
+python scripts/fetch_imperfective_nli.py
+python scripts/validate_dataset.py data/imperfectiveNLI.json
+python scripts/preflight.py
+```
+
+Run the zero-API validation stack:
 
 ```bash
 python scripts/validate_project.py
+python scripts/offline_rehearsal.py
+python scripts/synthetic_pipeline_smoke.py
 pytest -q
 ```
 
-The repository supports protocol verification and analysis without exposing API keys or private model credentials.
+The complete offline rehearsal constructs and audits the planned 15,800-request main-study matrix without creating an API client.
 
----
+## Live execution and credentials
 
-## Documentation Figures
+Live execution is deliberately opt-in. Credentials are read only from the local environment; no credential value is written into manifests, environment snapshots, or committed files.
 
-### Motivation: semantic uncertainty and predictive uncertainty
+- Never commit a populated `.env` file.
+- Never place API keys in configs, scripts, notebooks, issues, or result files.
+- `.env.example` contains placeholders only.
+- Raw provider responses and local execution evidence are excluded from version control by default.
 
-The first figure illustrates the distinction between uncertainty about the underlying event state and uncertainty in model prediction.
+Before sharing a checkout, run:
 
-### Evaluation framework
+```bash
+python scripts/security_scan.py
+```
 
-The second figure presents the black-box evaluation pipeline, including protocol freezing, uncertainty measurement, robustness testing, and audit-controlled analysis.
+## Data and publication boundary
 
----
+The ImperfectiveNLI benchmark is third-party research data and is **not redistributed** in this repository. `data/MANIFEST.json` records the pinned upstream source and expected artifact properties; the downloader retrieves that exact source locally. Third-party data remain subject to their original terms.
 
-## Data and License
+Raw API responses, processed empirical outputs, local environment snapshots, credentials, downloaded benchmark bytes, and other machine-local evidence are excluded from Git by default. The released repository contains the code, configuration, provenance metadata, tests, and documentation needed to reproduce the workflow without exposing private execution material.
 
-The repository uses the MIT License for original code. Third-party datasets and resources remain subject to their respective licenses. Raw API outputs and private execution artifacts are intentionally excluded.
+## Reproducibility and auditing
 
----
+The runner supports a dry-run mode that materializes exact request plans without constructing an API client. Live runs preserve run manifests and request metadata, and downstream analysis is gated by checks for record coverage, parse/request failures, completion-budget exhaustion, model-specific controls, checksums, and label/probability consistency.
+
+See:
+
+- [`docs/EXPERIMENT_PROTOCOL.md`](docs/EXPERIMENT_PROTOCOL.md)
+- [`docs/ANALYSIS_PLAN.md`](docs/ANALYSIS_PLAN.md)
+- [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md)
+- [`docs/CONTRACT_ADJUDICATION_A1.md`](docs/CONTRACT_ADJUDICATION_A1.md)
+- [`docs/ARTIFACT_GUIDE.md`](docs/ARTIFACT_GUIDE.md)
+
+## Research foundation
+
+The controlled semantic testbed derives from **The Imperfective Paradox in Large Language Models**, which introduced the ImperfectiveNLI evaluation setting. ULLM uses that semantic foundation to study a distinct reliability problem: separating correct semantic uncertainty from predictive confusion and evaluating whether black-box uncertainty signals can support risk-aware control.
+
+When using the benchmark, please also cite its original paper/release according to the upstream terms.
 
 ## Citation
 
-If you use this artifact, please cite the associated IASEAI'27 paper after publication.
+Repository citation metadata are provided in [`CITATION.cff`](CITATION.cff). Please cite the archival ULLM paper when available and cite the upstream ImperfectiveNLI work when using the benchmark.
+
+## License
+
+Original ULLM software and documentation are released under the [MIT License](LICENSE). The license does not relicense third-party benchmark data or other upstream resources.
