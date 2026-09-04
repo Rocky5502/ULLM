@@ -1,0 +1,12 @@
+# Manuscript environment
+# Install TeX Live separately for your operating system.
+
+latexmk
+biblatex
+amsmath
+booktabs
+multirow
+graphicx
+algorithm2e
+xcolor
+hyperref
